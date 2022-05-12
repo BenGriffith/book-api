@@ -1,7 +1,7 @@
-from fastapi import FastAPI
-from .models import (
-    Book
-)
+from http.client import HTTPException
+from fastapi import FastAPI, HTTPException
+
+from app.models import Book
 
 app = FastAPI()
 
@@ -28,6 +28,8 @@ def update_book(book_id: int, book: Book):
     if book_id in fake_db:
         fake_db[book.id] = book
         return fake_db[book.id]
+    else:
+        raise HTTPException(status_code=404, detail="Book not found")
 
 
 @app.delete("/books/{book_id}")
@@ -35,3 +37,5 @@ def delete_book(book_id: int):
     if book_id in fake_db:
         del fake_db[book_id]
         return {"ok": True}
+    else:
+        raise HTTPException(status_code=404, detail="Book not found")

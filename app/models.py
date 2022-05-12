@@ -1,5 +1,6 @@
 from datetime import date, datetime
-from typing import Optional, List, Dict
+from typing import Optional
+
 from pydantic import BaseModel
 
 
@@ -7,12 +8,12 @@ class Book(BaseModel):
 
     id: int
     title: str
-    authors: List[str]
+    authors: list[str]
     # publisher: str
     # published_date: date
     # description: str
     # page_count: int
-    # categories: List[str]
+    # categories: list[str]
     # average_rating: float
     # ratings_count: int
     # url: str
