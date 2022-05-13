@@ -25,17 +25,17 @@ def create_book(book: Book):
 
 @app.put("/books/{book_id}", response_model=Book)
 def update_book(book_id: int, book: Book):
-    if book_id in fake_db:
-        fake_db[book.id] = book
-        return fake_db[book.id]
-    else:
+    if book_id not in fake_db:
         raise HTTPException(status_code=404, detail="Book not found")
+    
+    fake_db[book.id] = book
+    return fake_db[book.id]        
 
 
 @app.delete("/books/{book_id}")
 def delete_book(book_id: int):
-    if book_id in fake_db:
-        del fake_db[book_id]
-        return {"ok": True}
-    else:
+    if not book_id in fake_db:
         raise HTTPException(status_code=404, detail="Book not found")
+
+    del fake_db[book_id]
+    return {"ok": True}
