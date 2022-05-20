@@ -22,10 +22,6 @@ class BookBase(BaseModel):
     authors: list[AuthorBase]
 
 
-class BookRead(BookBase):
-    id: int
-
-
 class BookCreate(BookBase):
     pass
 
