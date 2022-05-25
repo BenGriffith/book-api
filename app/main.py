@@ -1,13 +1,9 @@
-from email.policy import HTTP
-from typing import List
-
-# from sqlmodel import Session, select
 from fastapi import Depends, FastAPI, HTTPException
 from sqlalchemy.orm import Session
 
 import crud
 import models
-from schemas import Book, BookCreate, BookUpdate, ReadingList, ReadingListCreate
+from schemas import Author, AuthorCreate, Book, BookCreate, BookUpdate, ReadingList, ReadingListCreate
 from db import SessionLocal, engine
 
 
@@ -21,6 +17,11 @@ def get_db():
         yield db
     finally:
         db.close()
+
+
+@app.post("/authors/", response_model=Author, status_code=201)
+def create_author(author: AuthorCreate, db: Session = Depends(get_db)):
+    return crud.write_author(db=db, author=author)
 
 
 @app.post("/books/", response_model=Book, status_code=201)
@@ -67,3 +68,23 @@ def delete_book(book_id: int, db: Session = Depends(get_db)):
 @app.post("/lists/", response_model=ReadingList, status_code=201)
 def create_list(reading_list: ReadingListCreate, db: Session = Depends(get_db)):
     return crud.write_list(db=db, reading_list=reading_list)
+
+
+@app.get("/lists/{list_id}", response_model=ReadingList, status_code=200)
+def get_list(list_id: int, db: Session = Depends(get_db)):
+    reading_list = crud.read_list(db=db, list_id=list_id)
+
+    if reading_list is None:
+        raise HTTPException(status_code=404, detail="Reading List not found")
+
+    return reading_list
+
+
+@app.delete("/lists/{list_id}")
+def delete_list(list_id: int, db: Session = Depends(get_db)):
+    reading_list = crud.read_list(db=db, list_id=list_id)
+
+    if reading_list is None:
+        raise HTTPException(status_code=404, detail="Reading List not found")
+
+    return crud.delete_list(db=db, reading_list=reading_list)

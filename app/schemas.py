@@ -25,10 +25,9 @@ class BookBase(BaseModel):
     publisher: Optional[str] = None
     published_date: Optional[date] = None
     description: Optional[str] = None
-    # categories: list[CategoryBase]
     page_count: Optional[int] = 0
     average_rating: Optional[float] = None
-    authors: Optional[list[AuthorBase]] = None
+    authors: list[AuthorBase]
 
 
 class BookBaseReadingList(BaseModel):
