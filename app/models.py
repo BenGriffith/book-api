@@ -1,7 +1,7 @@
-from sqlalchemy import ForeignKey, Table, Column, Integer, String, Float, Date
+from sqlalchemy import ForeignKey, Table, Column, Integer, String, Float
 from sqlalchemy.orm import relationship
 
-from db import Base
+from app.db import Base
 
 
 BookAuthor = Table(
@@ -26,7 +26,7 @@ class Book(Base):
     id = Column(Integer, primary_key=True)
     title = Column(String)
     publisher = Column(String)
-    published_date = Column(Date)
+    published_year = Column(Integer)
     description = Column(String)
     page_count = Column(Integer)
     average_rating = Column(Float)

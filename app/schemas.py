@@ -1,5 +1,4 @@
-from typing import Optional, List
-from datetime import date
+from typing import Optional
 
 from pydantic import BaseModel
 
@@ -20,10 +19,14 @@ class Author(AuthorBase):
         orm_mode = True
 
 
+class AuthorUpdate(AuthorBase):
+    pass
+
+
 class BookBase(BaseModel):
     title: str
     publisher: Optional[str] = None
-    published_date: Optional[date] = None
+    published_year: Optional[int] = None
     description: Optional[str] = None
     page_count: Optional[int] = 0
     average_rating: Optional[float] = None
@@ -48,7 +51,7 @@ class Book(BookBase):
 
 class BookUpdate(BaseModel):
     publisher: Optional[str] = None
-    published_date: Optional[date] = None
+    published_year: Optional[int] = None
     description: Optional[str] = None
     average_rating: Optional[float] = None
 
