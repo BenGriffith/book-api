@@ -1,10 +1,10 @@
 from fastapi import Depends, FastAPI, HTTPException
 from sqlalchemy.orm import Session
 
-import crud
-import models
-from schemas import Author, AuthorCreate, Book, BookCreate, BookUpdate, ReadingList, ReadingListCreate
-from db import SessionLocal, engine
+from app import crud
+from app import models
+from app.schemas import Author, AuthorCreate, AuthorUpdate, Book, BookCreate, BookUpdate, ReadingList, ReadingListCreate
+from app.db import SessionLocal, engine
 
 
 models.Base.metadata.create_all(bind=engine)
