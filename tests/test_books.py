@@ -1,133 +1,159 @@
 import pytest
 from fastapi.testclient import TestClient
-from sqlmodel import Session, SQLModel, create_engine
-from sqlmodel.pool import StaticPool
 
-from app.db import get_session
-from app.main import app, Books
-
-
-@pytest.fixture(name="session")
-def session_fixture():
-
-    engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
-    SQLModel.metadata.create_all(engine)
-
-    with Session(engine) as session:
-        yield session
+from app.db import TestingSessionLocal
+from app.main import app, get_db
+from app.models import Author, Book
+from app.schemas import BookCreate, BookUpdate
 
 
-@pytest.fixture(name="client")
-def client_fixture(session: Session):
-    
-    def get_session_override():
-        return session
+def override_get_db():
+    try:
+        db = TestingSessionLocal()
+        yield db
+    finally:
+        db.close()
 
-    app.dependency_overrides[get_session] = get_session_override
+app.dependency_overrides[get_db] = override_get_db
 
-    client = TestClient(app)
-    yield client
-    app.dependency_overrides.clear()
+@pytest.fixture()
+def db_session():
+    return TestingSessionLocal()
 
 
 @pytest.fixture()
-def book_one():
-    book = Books(
-        id = 1,
-        title = "Band of Brothers",
-        authors = "Stephen Ambrose"
+def client():
+    client = TestClient(app)
+    return client
+
+
+@pytest.fixture()
+def author(db_session):
+    db = db_session
+    author = Author(
+        id=1,
+        first_name="John",
+        last_name="Doe"
     )
-    return book.dict()
+    
+    db.add(author)
+    db.commit()
+    db.refresh(author)
+
+    return author
+
+
+@pytest.fixture()
+def book(author, db_session):
+    db = db_session
+    book = Book(
+        id=1,
+        title="Awesome Book",
+        publisher="Self",
+        published_year=2021,
+        description="must read book",
+        page_count=100,
+        average_rating=4.6,
+        authors=[author]
+    )
+
+    db.add(book)
+    db.commit()
+    db.refresh(book)
+    
+    return book
 
 
 @pytest.fixture()
 def book_two():
-    book = Books(
-        id = 2,
-        title = "The Republic",
-        authors = "Plato"
+    book = BookCreate(
+        title = "Band Of Brothers",
+        publisher = "Amazon",
+        published_year = 2000,
+        description = "World War II",
+        page_count = 483,
+        average_rating = 4.9,
+        authors = [{"first_name":"John", "last_name": "Doe"}]
     )
     return book.dict()
 
 
-def test_get_root(client):
+@pytest.fixture()
+def book_three(book_two):
+    book = book_two
+    book["authors"][0]["first_name"] = "Marcus"
+    book["authors"][0]["last_name"] = "Smart"
 
-    response = client.get("/")
-    assert response.json() == {"message": "Welcome to the Book API!"}
+    return book
 
 
-def test_get_book(client, book_one):
+@pytest.fixture()
+def book_updates():
+    updates = BookUpdate(
+        publisher = "Apple",
+        published_year = 1989,
+        average_rating = 4.8
+    ).dict()
+    return updates
 
-    post_response = client.post("/books/", json=book_one)
-    book_one_data = post_response.json()
 
-    book_one_id = book_one_data["id"]
-    book_one_title = book_one_data["title"]
-    book_one_authors = book_one_data["authors"]
+def test_get_book(client, book):
 
-    response = client.get(f"/books/{book_one_id}")
-    data = response.json()
-
+    response = client.get("/books/1")
     assert response.status_code == 200
-    assert book_one_id == data["id"]
-    assert book_one_title == data["title"]
-    assert book_one_authors == data["authors"]
+    book_data = response.json()
+
+    assert book_data["title"] == book.title
+    assert book_data["publisher"] == book.publisher
+    assert book_data["published_year"] == book.published_year
+    assert book_data["description"] == book.description
+    assert book_data["page_count"] == book.page_count
+    assert book_data["average_rating"] == book.average_rating
+    assert book_data["authors"][0]["first_name"] == book.authors[0].first_name
+    assert book_data["authors"][0]["last_name"] == book.authors[0].last_name
 
 
-def test_get_book_unknown(client, book_one):
+def test_get_book_unknown(client):
 
-    post_response = client.post("/books/", json=book_one)
-    get_response = client.get("/books/2")
-    assert get_response.status_code == 404
+    response = client.get("/books/102")
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Book not found"}
 
 
-def test_create_book(client):
+def test_create_book(client, book_two):
 
-    response = client.post("/books/", json={
-        "id": 1,
-        "title": "Judge Dredd",
-        "authors": "Zach Morris"
-    })
+    response = client.post("/books/", json=book_two)
+    assert response.status_code == 201
     data = response.json()
 
-    assert response.status_code == 201
+    assert data["id"] == 2
+    assert data["title"] == "Band Of Brothers"
+    assert data["publisher"] == "Amazon"
+    assert data["published_year"] == 2000
+    assert data["description"] == "World War II"
+    assert data["page_count"] == 483
+    assert data["average_rating"] == 4.9
+
+
+def test_create_book_no_author(client, book_three):
+
+    response = client.post("/books/", json=book_three)
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Author not found. Please create an Author entry for Marcus Smart"}
+
+
+def test_update_book(client, book_updates):
+    
+    response = client.patch("/books/1", json=book_updates)
+    data = response.json()
+
     assert data["id"] == 1
-    assert data["title"] == "Judge Dredd"
-    assert data["authors"] == "Zach Morris"
+    assert data["publisher"] == "Apple"
+    assert data["published_year"] == 1989
+    assert data["average_rating"] == 4.8
 
 
-def test_update_book(client):
+def test_delete_book(client):
 
-    response = client.post("/books/", json={
-        "id": 2,
-        "title": "Huckleberry Finn",
-        "authors": "Mark Twain"
-    })
-    data = response.json()
-
-    assert response.status_code == 201
-    assert data["id"] == 2
-
-    response = client.patch("/books/2", json={
-        "id": 2,
-        "title": "The Great Gatsby",
-        "authors": "F. Scott Fitzgerald"
-    })
-    data = response.json()
-
-    assert data["id"] == 2
-    assert data["title"] == "The Great Gatsby"
-    assert data["authors"] == "F. Scott Fitzgerald"
-
-
-def test_delete_book(client, session, book_two):
-
-    post_response = client.post("/books/", json=book_two)
-    data = post_response.json()
-
-    delete_response = client.delete("/books/2")
-
-    book_in_db = session.get(Books, data["id"])
-
-    assert delete_response.status_code == 200
-    assert book_in_db is None
+    response = client.delete("/books/1")
+    assert response.json() == {"message": "Awesome Book was deleted"}
