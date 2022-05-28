@@ -24,6 +24,42 @@ def get_db():
 def create_author(author: AuthorCreate, db: Session = Depends(get_db)):
     return crud.write_author(db=db, author=author)
 
+
+@app.get("/authors/", response_model=list[Author], status_code=200)
+def get_authors(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    authors = crud.read_authors(db=db, skip=skip, limit=limit)
+    return authors
+
+
+@app.get("/authors/{author_id}", response_model=Author, status_code=200)
+def get_author(author_id: int, db: Session = Depends(get_db)):
+    author = crud.read_author(db=db, author_id=author_id)
+
+    if author is None:
+        raise HTTPException(status_code=404, detail="Author not found")
+
+    return author
+
+
+@app.patch("/authors/{author_id}")
+def update_author(author_id: int, author: AuthorUpdate, db: Session = Depends(get_db)):
+    existing_author = crud.read_author(db=db, author_id=author_id)
+
+    if existing_author is None:
+        raise HTTPException(status_code=404, detail="Author not found")
+
+    return crud.update_author(db=db, author=existing_author, updates=author)
+
+
+@app.delete("/authors/{author_id}")
+def delete_author(author_id: int, db: Session = Depends(get_db)):
+    author = crud.read_author(db=db, author_id=author_id)
+
+    if author is None:
+        raise HTTPException(status_code=404, detail="Author not found")
+
+    return crud.delete_author(db=db, author=author)
+
    
 @app.post("/books/", response_model=Book, status_code=201)
 def create_book(book: BookCreate, db: Session = Depends(get_db)):    

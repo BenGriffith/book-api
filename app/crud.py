@@ -17,6 +17,33 @@ def write_author(db: Session, author: AuthorCreate):
     return author
 
 
+def read_author(db: Session, author_id: int):
+    author = db.get(Author, author_id)
+    return author
+
+
+def read_authors(db: Session, skip: int, limit: int):
+    return db.query(Author).offset(skip).limit(limit).all()
+
+
+def update_author(db: Session, author: Author, updates: AuthorUpdate):
+    update_data = updates.dict(exclude_unset=True)
+
+    author.first_name = update_data["first_name"].capitalize()
+    author.last_name = update_data["last_name"].capitalize()
+
+    db.commit()
+    db.refresh(author)
+
+    return author
+
+
+def delete_author(db: Session, author: Author):
+    db.delete(author)
+    db.commit()
+    return {"message": f"{author.first_name} {author.last_name} was deleted"}
+
+
 def write_book(db: Session, book: BookCreate):
 
     authors = []
