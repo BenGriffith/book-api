@@ -3,8 +3,8 @@ from sqlalchemy.exc import NoResultFound
 from sqlalchemy import func
 from fastapi import HTTPException
 
-from app.models import Author, Book, ReadingList
-from app.schemas import AuthorCreate, AuthorUpdate, BookCreate, BookUpdate, ReadingListCreate
+from .models import Author, Book, ReadingList
+from .schemas import AuthorCreate, AuthorUpdate, BookCreate, BookUpdate, ReadingListCreate
 
 
 def write_author(db: Session, author: AuthorCreate):
@@ -22,8 +22,8 @@ def write_book(db: Session, book: BookCreate):
     authors = []
     for author in book.authors:
 
-        first_name = author.first_name.capitalize()
-        last_name = author.last_name.capitalize()
+        first_name = author.first_name
+        last_name = author.last_name
 
         try:
             db_author = db.query(Author).filter(
@@ -43,7 +43,7 @@ def write_book(db: Session, book: BookCreate):
         authors=authors,
         publisher=book.publisher.title(),
         published_year=book.published_year,
-        description=book.description.lower(),
+        description=book.description,
         page_count=book.page_count,
         average_rating=book.average_rating
     )
@@ -69,7 +69,7 @@ def update_book(db: Session, book: Book, updates: BookUpdate):
 
     book.publisher = update_data["publisher"].title()
     book.published_year = update_data["published_year"]
-    book.description = update_data["description"].lower()
+    book.description = update_data["description"]
     book.average_rating = update_data["average_rating"]
 
     db.commit()
@@ -102,7 +102,7 @@ def write_list(db: Session, reading_list: ReadingListCreate):
 
 
     db_list = ReadingList(
-        title = reading_list.title.title(),
+        title = reading_list.title,
         books = books
     )
 
