@@ -4,10 +4,11 @@ from sqlalchemy.orm import Session
 from app import crud
 from app import models
 from app.schemas import Author, AuthorCreate, AuthorUpdate, Book, BookCreate, BookUpdate, ReadingList, ReadingListCreate
-from app.db import SessionLocal, engine
+from app.db import SessionLocal, dev_engine, test_engine
 
 
-models.Base.metadata.create_all(bind=engine)
+models.Base.metadata.create_all(bind=dev_engine)
+models.Base.metadata.create_all(bind=test_engine)
 
 app = FastAPI()
 
@@ -23,7 +24,7 @@ def get_db():
 def create_author(author: AuthorCreate, db: Session = Depends(get_db)):
     return crud.write_author(db=db, author=author)
 
-
+   
 @app.post("/books/", response_model=Book, status_code=201)
 def create_book(book: BookCreate, db: Session = Depends(get_db)):    
     return crud.write_book(db=db, book=book)
