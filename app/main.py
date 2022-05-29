@@ -3,11 +3,11 @@ from sqlalchemy.orm import Session
 
 from app import crud
 from app import models
-from app.schemas import Author, AuthorCreate, AuthorUpdate, Book, BookCreate, BookUpdate, ReadingList, ReadingListCreate
+from app.schemas import User, UserCreate, UserUpdate, Author, AuthorCreate, AuthorUpdate, Book, BookCreate, BookUpdate, ReadingList, ReadingListCreate
 from app.db import SessionLocal, dev_engine, test_engine
 
 
-models.Base.metadata.create_all(bind=dev_engine)
+#models.Base.metadata.create_all(bind=dev_engine)
 models.Base.metadata.create_all(bind=test_engine)
 
 app = FastAPI()
@@ -18,6 +18,41 @@ def get_db():
         yield db
     finally:
         db.close()
+
+
+@app.post("/users/", response_model=User, status_code=201)
+def create_user(user: UserCreate, db: Session = Depends(get_db)):
+    return crud.write_user(db=db, user=user)
+
+
+@app.get("/users/{user_id}", response_model=User, status_code=200)
+def get_user(user_id: int, db: Session = Depends(get_db)):
+    user = crud.read_user(db=db, user_id=user_id)
+
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    return user
+
+
+@app.put("/users/{user_id}")
+def update_user(user_id: int, user: UserUpdate, db: Session = Depends(get_db)):
+    existing_user = crud.read_user(db=db, user_id=user_id)
+
+    if existing_user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    return crud.update_user(db=db, user=existing_user, updates=user)
+
+
+@app.delete("/users/{user_id}")
+def delete_user(user_id: int, db: Session = Depends(get_db)):
+    user = crud.read_user(db=db, user_id=user_id)
+
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    return crud.delete_user(db=db, user=user)
 
 
 @app.post("/authors/", response_model=Author, status_code=201)
