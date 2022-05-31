@@ -1,9 +1,9 @@
 import pytest
 from fastapi.testclient import TestClient
 
-from app.db import TestingSessionLocal
+from app.db import TestingSessionLocal, dev_engine
 from app.main import app, get_db
-from app.models import Author, Book
+from app import models
 from app.schemas import ReadingListCreate
 
 
@@ -18,7 +18,11 @@ app.dependency_overrides[get_db] = override_get_db
 
 @pytest.fixture()
 def db_session():
-    return TestingSessionLocal()
+    try:
+        db = TestingSessionLocal()
+        yield db
+    finally:
+        db.close()
 
 
 @pytest.fixture()
@@ -26,12 +30,15 @@ def client():
     client = TestClient(app)
     return client
 
+@pytest.fixture()
+def db_cleanup():
+    models.Base.metadata.drop_all(bind=dev_engine)
+
 
 @pytest.fixture()
 def author(db_session):
     db = db_session
-    author = Author(
-        id=1,
+    author = models.Author(
         first_name="John",
         last_name="Doe"
     )
@@ -46,8 +53,7 @@ def author(db_session):
 @pytest.fixture()
 def book(author, db_session):
     db = db_session
-    book = Book(
-        id=1,
+    book = models.Book(
         title="Awesome Book",
         publisher="Self",
         published_year=2021,
@@ -112,3 +118,7 @@ def test_delete_list_not_found(client):
 def test_delete_list(client):
     response = client.delete("/lists/1")
     assert response.json() == {"message": "my list was deleted"}
+
+
+def test_db_cleanup(db_cleanup):
+    pass

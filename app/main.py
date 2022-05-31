@@ -4,11 +4,13 @@ from sqlalchemy.orm import Session
 from app import crud
 from app import models
 from app.schemas import User, UserCreate, UserUpdate, Author, AuthorCreate, AuthorUpdate, Book, BookCreate, BookUpdate, ReadingList, ReadingListCreate
-from app.db import SessionLocal, dev_engine, test_engine
+from app.db import SessionLocal, dev_engine, prod_engine, DEBUG
 
 
-#models.Base.metadata.create_all(bind=dev_engine)
-models.Base.metadata.create_all(bind=test_engine)
+if DEBUG:
+    models.Base.metadata.create_all(bind=dev_engine)
+else:
+    models.Base.metadata.create_all(bind=prod_engine)
 
 app = FastAPI()
 

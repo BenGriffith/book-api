@@ -14,7 +14,7 @@ def write_user(db: Session, user: UserCreate):
         ).first()
 
     if email:
-        raise HTTPException(status_code=404, detail="Please use different email address")
+        raise HTTPException(status_code=400, detail="Please use different email address")
 
     user = User(
         email=user.email,
@@ -176,11 +176,17 @@ def write_list(db: Session, reading_list: ReadingListCreate):
         func.lower(User.email) == func.lower(reading_list.user_email)
     ).first()
 
-    db_list = ReadingList(
-        title = reading_list.title,
-        user_id = db_user.id,
-        books = books
-    )
+    if db_user is None:
+        db_list = ReadingList(
+            title = reading_list.title,
+            books = books
+        )
+    else:
+        db_list = ReadingList(
+            title = reading_list.title,
+            books = books,
+            user_id = db_user.id
+        )
 
     db.add_all(books + [db_list])
     db.commit()

@@ -1,10 +1,9 @@
-import email
 import pytest
 from fastapi.testclient import TestClient
 
-from app.db import TestingSessionLocal
+from app.db import TestingSessionLocal, dev_engine
 from app.main import app, get_db
-from app.models import User, Author, Book
+from app import models
 from app.schemas import UserCreate, UserUpdate, ReadingListCreate
 
 
@@ -19,13 +18,22 @@ app.dependency_overrides[get_db] = override_get_db
 
 @pytest.fixture()
 def db_session():
-    return TestingSessionLocal()
+    try:
+        db = TestingSessionLocal()
+        yield db
+    finally:
+        db.close()
 
 
 @pytest.fixture()
 def client():
     client = TestClient(app)
     return client
+
+
+@pytest.fixture()
+def db_cleanup():
+    models.Base.metadata.drop_all(bind=dev_engine)
 
 
 @pytest.fixture()
@@ -41,8 +49,7 @@ def user_one():
 @pytest.fixture()
 def user_two(db_session):
     db = db_session
-    user = User(
-        id=2,
+    user = models.User(
         email="user_two@test.com",
         first_name="Jerry",
         last_name="Seinfeld"
@@ -77,16 +84,14 @@ def assign_user_to_reading_list(db_session):
     db = db_session
 
     # create Author
-    author = Author(
-        id=1,
+    author = models.Author(
         first_name="Stephen",
         last_name="King"
     )
 
 
     # create Book One
-    book_one = Book(
-        id=1,
+    book_one = models.Book(
         title="It",
         publisher="Company A",
         published_year=1986,
@@ -98,8 +103,7 @@ def assign_user_to_reading_list(db_session):
 
 
     # create Book Two
-    book_two = Book(
-        id=2,
+    book_two = models.Book(
         title="The Shining",
         publisher="Company A",
         published_year=1977,
@@ -130,7 +134,6 @@ def test_create_user(client, user_one):
     assert response.status_code == 201
     data = response.json()
 
-    assert data["id"] == 1
     assert data["email"] == "user_one@test.com"
     assert data["first_name"] == "Elaine"
     assert data["last_name"] == "Benes"
@@ -142,7 +145,6 @@ def test_get_user(client, user_two):
     assert response.status_code == 200
     data = response.json()
 
-    assert data["id"] == 2
     assert data["email"] == "user_two@test.com"
     assert data["first_name"] == "Jerry"
     assert data["last_name"] == "Seinfeld"
@@ -151,7 +153,7 @@ def test_get_user(client, user_two):
 def test_create_user_same_email(client, user_three):
 
     response = client.post("/users/", json=user_three)
-    assert response.status_code == 404
+    assert response.status_code == 400
     assert response.json() == {"detail": "Please use different email address"}
 
 
@@ -185,8 +187,11 @@ def test_assign_user_to_reading_list(client, assign_user_to_reading_list):
     assert response.status_code == 201
     data = response.json()
 
-    assert data["id"] == 1
     assert data["title"] == "books to read"
     assert data["books"][0]["title"] == "It"
     assert data["books"][1]["title"] == "The Shining"
     assert data["user_id"] == 2
+
+
+def test_db_cleanup(db_cleanup):
+    pass
