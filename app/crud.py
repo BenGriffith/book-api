@@ -3,8 +3,53 @@ from sqlalchemy.exc import NoResultFound
 from sqlalchemy import func
 from fastapi import HTTPException
 
-from .models import Author, Book, ReadingList
-from .schemas import AuthorCreate, AuthorUpdate, BookCreate, BookUpdate, ReadingListCreate
+from .models import User, Author, Book, ReadingList
+from .schemas import UserCreate, UserUpdate, AuthorCreate, AuthorUpdate, BookCreate, BookUpdate, ReadingListCreate
+
+
+def write_user(db: Session, user: UserCreate):
+
+    email = db.query(User).filter(
+        func.lower(User.email) == func.lower(user.email)
+        ).first()
+
+    if email:
+        raise HTTPException(status_code=400, detail="Please use different email address")
+
+    user = User(
+        email=user.email,
+        first_name=user.first_name,
+        last_name=user.last_name
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+
+    return user
+
+
+def read_user(db: Session, user_id: int):
+    user = db.get(User, user_id)
+    return user
+
+
+def update_user(db: Session, user: User, updates: UserUpdate):
+    update_data = updates.dict(exclude_unset=True)
+
+    user.email = update_data["email"]
+    user.first_name = update_data["first_name"]
+    user.last_name = update_data["last_name"]
+
+    db.commit()
+    db.refresh(user)
+
+    return user
+
+
+def delete_user(db: Session, user: User):
+    db.delete(user)
+    db.commit()
+    return {"message": f"{user.first_name} {user.last_name} was deleted"}
 
 
 def write_author(db: Session, author: AuthorCreate):
@@ -127,11 +172,21 @@ def write_list(db: Session, reading_list: ReadingListCreate):
 
         books.append(db_book)
 
+    db_user = db.query(User).filter(
+        func.lower(User.email) == func.lower(reading_list.user_email)
+    ).first()
 
-    db_list = ReadingList(
-        title = reading_list.title,
-        books = books
-    )
+    if db_user is None:
+        db_list = ReadingList(
+            title = reading_list.title,
+            books = books
+        )
+    else:
+        db_list = ReadingList(
+            title = reading_list.title,
+            books = books,
+            user_id = db_user.id
+        )
 
     db.add_all(books + [db_list])
     db.commit()

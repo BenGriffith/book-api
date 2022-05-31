@@ -1,9 +1,9 @@
 import pytest
 from fastapi.testclient import TestClient
 
-from app.db import TestingSessionLocal
+from app.db import TestingSessionLocal, dev_engine
 from app.main import app, get_db
-from app.models import Author, Book
+from app import models
 from app.schemas import BookCreate, BookUpdate
 
 
@@ -18,7 +18,11 @@ app.dependency_overrides[get_db] = override_get_db
 
 @pytest.fixture()
 def db_session():
-    return TestingSessionLocal()
+    try:
+        db = TestingSessionLocal()
+        yield db
+    finally:
+        db.close()
 
 
 @pytest.fixture()
@@ -28,10 +32,14 @@ def client():
 
 
 @pytest.fixture()
+def db_cleanup():
+    models.Base.metadata.drop_all(bind=dev_engine)
+
+
+@pytest.fixture()
 def author(db_session):
     db = db_session
-    author = Author(
-        id=1,
+    author = models.Author(
         first_name="John",
         last_name="Doe"
     )
@@ -46,8 +54,7 @@ def author(db_session):
 @pytest.fixture()
 def book(author, db_session):
     db = db_session
-    book = Book(
-        id=1,
+    book = models.Book(
         title="Awesome Book",
         publisher="Self",
         published_year=2021,
@@ -126,7 +133,6 @@ def test_create_book(client, book_two):
     assert response.status_code == 201
     data = response.json()
 
-    assert data["id"] == 2
     assert data["title"] == "Band Of Brothers"
     assert data["publisher"] == "Amazon"
     assert data["published_year"] == 2000
@@ -157,3 +163,7 @@ def test_delete_book(client):
 
     response = client.delete("/books/1")
     assert response.json() == {"message": "Awesome Book was deleted"}
+
+
+def test_db_cleanup(db_cleanup):
+    pass

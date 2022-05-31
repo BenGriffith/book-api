@@ -1,9 +1,9 @@
 import pytest
 from fastapi.testclient import TestClient
 
-from app.db import TestingSessionLocal
+from app.db import TestingSessionLocal, dev_engine
 from app.main import app, get_db
-from app.models import Author
+from app import models
 from app.schemas import AuthorCreate, AuthorUpdate
 
 
@@ -18,13 +18,22 @@ app.dependency_overrides[get_db] = override_get_db
 
 @pytest.fixture()
 def db_session():
-    return TestingSessionLocal()
+    try:
+        db = TestingSessionLocal()
+        yield db
+    finally:
+        db.close()
 
 
 @pytest.fixture()
 def client():
     client = TestClient(app)
     return client
+
+
+@pytest.fixture()
+def db_cleanup():
+    models.Base.metadata.drop_all(bind=dev_engine)
 
 
 @pytest.fixture()
@@ -40,8 +49,7 @@ def author_one():
 @pytest.fixture()
 def author_two(db_session):
     db = db_session
-    author = Author(
-        id=2,
+    author = models.Author(
         first_name="John",
         last_name="Doe"
     )
@@ -53,8 +61,7 @@ def author_two(db_session):
 @pytest.fixture()
 def author_three(db_session):
     db = db_session
-    author = Author(
-        id=3,
+    author = models.Author(
         first_name="Cosmo",
         last_name="Kramer"
     )
@@ -89,7 +96,6 @@ def test_get_author_two(client, author_two):
     assert response.status_code == 200
     data = response.json()
 
-    assert data["id"] == 2
     assert data["first_name"] == "John"
     assert data["last_name"] == "Doe"
 
@@ -100,7 +106,6 @@ def test_get_author_three(client, author_three):
     assert response.status_code == 200
     data = response.json()
 
-    assert data["id"] == 3
     assert data["first_name"] == "Cosmo"
     assert data["last_name"] == "Kramer"
 
@@ -123,7 +128,6 @@ def test_update_author(client, author_four):
     response = client.patch("/authors/1", json=author_four)
     data = response.json()
 
-    assert data["id"] == 1
     assert data["first_name"] == "Wayne"
     assert data["last_name"] == "Knight"
 
@@ -138,3 +142,6 @@ def test_delete_author_not_exist(client):
 
     response = client.delete("/authors/100")
     assert response.json() == {"detail": "Author not found"}
+
+def test_db_cleanup(db_cleanup):
+    pass

@@ -5,14 +5,12 @@ from sqlalchemy.orm import sessionmaker
 
 DEBUG = config("DEBUG", default=False, cast=bool)
 DEV = config("DEV")
-TEST = config("TEST")
+PROD = config("PROD")
 
 dev_engine = create_engine(DEV, echo=DEBUG)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=dev_engine)
+TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=dev_engine)
 
-
-test_engine = create_engine(TEST, echo=DEBUG)
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=test_engine)
-
+prod_engine = create_engine(PROD, echo=DEBUG)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=prod_engine)
 
 Base = declarative_base()

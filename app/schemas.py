@@ -62,11 +62,35 @@ class ReadingListBase(BaseModel):
 
 class ReadingListCreate(ReadingListBase):
     books: list[str]
+    user_email: Optional[str] = None
 
 
 class ReadingList(ReadingListBase):
     id: int
+    user_id: Optional[int]
     books: list[Book]
 
     class Config:
         orm_mode = True
+
+
+class UserBase(BaseModel):
+    email: str
+    first_name: str
+    last_name: str
+
+
+class UserCreate(UserBase):
+    pass
+
+
+class User(UserBase):
+    id: int
+    reading_lists: Optional[list[ReadingList]] = None
+
+    class Config:
+        orm_mode = True
+
+
+class UserUpdate(UserBase):
+    pass
