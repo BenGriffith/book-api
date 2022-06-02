@@ -1,39 +1,10 @@
 import pytest
+from sqlalchemy.orm import Session
 from fastapi.testclient import TestClient
 
-from app.db import TestingSessionLocal, dev_engine
-from app.main import app, get_db
-from app import models
+from tests.conftest import db_setup, db_session, client
+from app.models import Author
 from app.schemas import AuthorCreate, AuthorUpdate
-
-
-def override_get_db():
-    try:
-        db = TestingSessionLocal()
-        yield db
-    finally:
-        db.close()
-
-app.dependency_overrides[get_db] = override_get_db
-
-@pytest.fixture()
-def db_session():
-    try:
-        db = TestingSessionLocal()
-        yield db
-    finally:
-        db.close()
-
-
-@pytest.fixture()
-def client():
-    client = TestClient(app)
-    return client
-
-
-@pytest.fixture()
-def db_cleanup():
-    models.Base.metadata.drop_all(bind=dev_engine)
 
 
 @pytest.fixture()
@@ -43,31 +14,33 @@ def author_one():
         last_name="costanza"
     ).dict()
 
-    return author
+    yield author
 
 
 @pytest.fixture()
-def author_two(db_session):
-    db = db_session
-    author = models.Author(
+def author_two(session: Session):
+    db = session
+    author = Author(
         first_name="John",
         last_name="Doe"
     )
     
     db.add(author)
     db.commit()
+    yield author
 
 
 @pytest.fixture()
-def author_three(db_session):
-    db = db_session
-    author = models.Author(
+def author_three(session: Session):
+    db = session
+    author = Author(
         first_name="Cosmo",
         last_name="Kramer"
     )
 
     db.add(author)
     db.commit()
+    yield author
 
 
 @pytest.fixture()
@@ -77,10 +50,10 @@ def author_four():
         last_name="Knight"
     ).dict()
 
-    return author
+    yield author
 
 
-def test_create_author(client, author_one):
+def test_create_author(db_setup, client: TestClient, author_one: AuthorCreate):
 
     response = client.post("/authors/", json=author_one)
     assert response.status_code == 201
@@ -90,58 +63,77 @@ def test_create_author(client, author_one):
     assert data["last_name"] == "Costanza"
 
 
-def test_get_author_two(client, author_two):
+def test_get_author_two(session: Session, client: TestClient, author_two: Author):
 
-    response = client.get("/authors/2")
+    db_author = session.query(Author).filter(
+        Author.first_name == author_two.first_name, 
+        Author.last_name == author_two.last_name
+        ).first()
+
+    response = client.get(f"/authors/{db_author.id}")
     assert response.status_code == 200
     data = response.json()
 
+    assert data["id"] == db_author.id
     assert data["first_name"] == "John"
     assert data["last_name"] == "Doe"
 
 
-def test_get_author_three(client, author_three):
+def test_get_author_three(session: Session, client: TestClient, author_three: Author):
 
-    response = client.get("/authors/3")
+    db_author = session.query(Author).filter(
+        Author.first_name == author_three.first_name,
+        Author.last_name == author_three.last_name
+    ).first()
+
+    response = client.get(f"/authors/{db_author.id}")
     assert response.status_code == 200
     data = response.json()
 
+    assert data["id"] == db_author.id
     assert data["first_name"] == "Cosmo"
     assert data["last_name"] == "Kramer"
 
 
-def test_get_authors(client):
+def test_get_authors(client: TestClient, author_two: Author, author_three: Author):
 
     response = client.get("/authors/")
     assert response.status_code == 200
     data = response.json()
 
-    first_names = ["George", "John", "Cosmo"]
+    first_names = ["John", "Cosmo"]
 
-    assert len(data) == 3
+    assert len(data) == 2
     for i in range(len(data)):
         assert data[i]["first_name"] == first_names[i]
 
 
-def test_update_author(client, author_four):
+def test_update_author(session: Session, client: TestClient, author_two: Author, author_four: AuthorUpdate):
 
-    response = client.patch("/authors/1", json=author_four)
+    db_author = session.query(Author).filter(
+        Author.first_name == author_two.first_name,
+        Author.last_name == author_two.last_name
+    ).first()
+
+    response = client.patch(f"/authors/{db_author.id}", json=author_four)
     data = response.json()
 
     assert data["first_name"] == "Wayne"
     assert data["last_name"] == "Knight"
 
 
-def test_delete_author(client):
+def test_delete_author(session: Session, client: TestClient, author_three: Author):
 
-    response = client.delete("/authors/3")
+    db_author = session.query(Author).filter(
+        Author.first_name == author_three.first_name,
+        Author.last_name == author_three.last_name
+    ).first()
+
+    response = client.delete(f"/authors/{db_author.id}")
     assert response.json() == {"message": "Cosmo Kramer was deleted"}
 
 
-def test_delete_author_not_exist(client):
+def test_delete_author_not_exist(client: TestClient):
 
     response = client.delete("/authors/100")
     assert response.json() == {"detail": "Author not found"}
-
-def test_db_cleanup(db_cleanup):
-    pass

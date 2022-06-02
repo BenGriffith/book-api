@@ -4,13 +4,8 @@ from sqlalchemy.orm import Session
 from app import crud
 from app import models
 from app.schemas import User, UserCreate, UserUpdate, Author, AuthorCreate, AuthorUpdate, Book, BookCreate, BookUpdate, ReadingList, ReadingListCreate
-from app.db import SessionLocal, dev_engine, prod_engine, DEBUG
+from app.db import SessionLocal, engine
 
-
-if DEBUG:
-    models.Base.metadata.create_all(bind=dev_engine)
-else:
-    models.Base.metadata.create_all(bind=prod_engine)
 
 app = FastAPI()
 
@@ -20,6 +15,11 @@ def get_db():
         yield db
     finally:
         db.close()
+
+
+@app.on_event("startup")
+def on_startup():
+    models.Base.metadata.create_all(bind=engine)
 
 
 @app.post("/users/", response_model=User, status_code=201)
