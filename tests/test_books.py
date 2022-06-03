@@ -2,7 +2,6 @@ import pytest
 from sqlalchemy.orm import Session
 from fastapi.testclient import TestClient
 
-from tests.conftest import db_setup, db_session, client
 from app.models import Author, Book
 from app.schemas import BookCreate, BookUpdate
 
@@ -14,7 +13,7 @@ def author(session: Session):
         first_name="John",
         last_name="Doe"
     )
-    
+
     db.add(author)
     db.commit()
     yield author
@@ -71,7 +70,7 @@ def book_updates():
     yield updates
 
 
-def test_get_book(db_setup, session: Session, client: TestClient, book: Book):
+def test_get_book(session: Session, client: TestClient, book: Book):
 
     db_book = session.query(Book).filter(
         Book.title == book.title
@@ -120,7 +119,7 @@ def test_create_book_no_author(client: TestClient, book_three: BookCreate):
 
 
 def test_update_book(session: Session, client: TestClient, book: Book, book_updates: BookUpdate):
-    
+
     db_book = session.query(Book).filter(
         Book.title == book.title
     ).one()

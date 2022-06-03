@@ -7,3 +7,4 @@ app/.env
 app/erd
 app/__pycache__
 tests/__pycache__
+*.db

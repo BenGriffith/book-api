@@ -2,7 +2,6 @@ import pytest
 from sqlalchemy.orm import Session
 from fastapi.testclient import TestClient
 
-from tests.conftest import db_setup, db_session, client
 from app.models import User, Author, Book, ReadingList
 from app.schemas import UserCreate, UserUpdate, ReadingListCreate
 
@@ -89,7 +88,7 @@ def assign_user_to_reading_list(session: Session):
     db.add(book_two)
     db.commit()
 
-    # create Reading List assigned to user 
+    # create Reading List assigned to user
     reading_list = ReadingListCreate(
         title="books to read",
         books=[book_one.title, book_two.title],
@@ -99,8 +98,8 @@ def assign_user_to_reading_list(session: Session):
     yield reading_list
 
 
-def test_create_user(db_setup, client: TestClient, user_one: UserCreate):
-    
+def test_create_user(client: TestClient, user_one: UserCreate):
+
     response = client.post("/users/", json=user_one)
     assert response.status_code == 201
     data = response.json()
@@ -115,7 +114,7 @@ def test_get_user(session: Session, client: TestClient, user_two: User):
     db_user = session.query(User).filter(
         User.email == user_two.email
     ).first()
-    
+
     response = client.get(f"/users/{db_user.id}")
     assert response.status_code == 200
     data = response.json()
@@ -123,7 +122,7 @@ def test_get_user(session: Session, client: TestClient, user_two: User):
     assert data["email"] == "user_two@test.com"
     assert data["first_name"] == "Jerry"
     assert data["last_name"] == "Seinfeld"
-    
+
 
 def test_create_user_same_email(session: Session, client: TestClient, user_three: User):
 
@@ -135,7 +134,7 @@ def test_create_user_same_email(session: Session, client: TestClient, user_three
     db = session
     db.add(user)
     db.commit()
-    
+
     response = client.post("/users/", json=user_three)
     assert response.status_code == 400
     assert response.json() == {"detail": "Please use different email address"}
@@ -146,7 +145,7 @@ def test_update_user(session: Session, client: TestClient, user_two: User, user_
     db_user = session.query(User).filter(
         User.email == user_two.email
     ).first()
-    
+
     response = client.put(f"/users/{db_user.id}", json=user_two_update)
     data = response.json()
 
@@ -167,7 +166,7 @@ def test_delete_user(session: Session, client: TestClient, user_two: User):
 
 
 def test_delete_user_not_exist(client):
-    
+
     response = client.delete("/users/100")
     assert response.status_code == 404
     assert response.json() == {"detail": "User not found"}
