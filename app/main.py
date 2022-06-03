@@ -141,7 +141,11 @@ def delete_book(book_id: int, db: Session = Depends(get_db)):
 
 @app.post("/lists/", response_model=ReadingList, status_code=201)
 def create_list(reading_list: ReadingListCreate, db: Session = Depends(get_db)):
-    return crud.write_list(db=db, reading_list=reading_list)
+    user_id = None
+    if reading_list.user_email:
+        user_id = crud.get_user_id(db=db, user_email=reading_list.user_email)
+
+    return crud.write_list(db=db, user_id=user_id, reading_list=reading_list)
 
 
 @app.get("/lists/{list_id}", response_model=ReadingList, status_code=200)

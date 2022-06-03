@@ -99,7 +99,7 @@ def assign_user_to_reading_list(session: Session):
     yield reading_list
 
 
-def test_create_user(client: TestClient, user_one: UserCreate):
+def test_create_user(db_setup, client: TestClient, user_one: UserCreate):
     
     response = client.post("/users/", json=user_one)
     assert response.status_code == 201

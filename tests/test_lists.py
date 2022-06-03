@@ -67,7 +67,7 @@ def reading_list_three():
     yield request
 
 
-def test_create_list_book_not_found(client: TestClient, reading_list_three: ReadingListCreate):
+def test_create_list_book_not_found(db_setup, client: TestClient, reading_list_three: ReadingListCreate):
     response = client.post("/lists/", json=reading_list_three)
     assert response.status_code == 404
     assert response.json() == {"detail": f"Book not found. Please create a Book entry for {reading_list_three['books'][0].title()}"}

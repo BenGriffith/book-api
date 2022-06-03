@@ -71,7 +71,7 @@ def book_updates():
     yield updates
 
 
-def test_get_book(session: Session, client: TestClient, book: Book):
+def test_get_book(db_setup, session: Session, client: TestClient, book: Book):
 
     db_book = session.query(Book).filter(
         Book.title == book.title
