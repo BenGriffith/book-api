@@ -67,7 +67,7 @@ class ReadingListCreate(ReadingListBase):
 
 class ReadingList(ReadingListBase):
     id: int
-    user_id: int
+    user_id: Optional[int]
     books: list[Book]
 
     class Config:

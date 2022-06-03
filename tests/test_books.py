@@ -1,53 +1,29 @@
 import pytest
+from sqlalchemy.orm import Session
 from fastapi.testclient import TestClient
 
-from app.db import TestingSessionLocal
-from app.main import app, get_db
+from tests.conftest import db_setup, db_session, client
 from app.models import Author, Book
 from app.schemas import BookCreate, BookUpdate
 
 
-def override_get_db():
-    try:
-        db = TestingSessionLocal()
-        yield db
-    finally:
-        db.close()
-
-app.dependency_overrides[get_db] = override_get_db
-
 @pytest.fixture()
-def db_session():
-    return TestingSessionLocal()
-
-
-@pytest.fixture()
-def client():
-    client = TestClient(app)
-    return client
-
-
-@pytest.fixture()
-def author(db_session):
-    db = db_session
+def author(session: Session):
+    db = session
     author = Author(
-        id=1,
         first_name="John",
         last_name="Doe"
     )
     
     db.add(author)
     db.commit()
-    db.refresh(author)
-
-    return author
+    yield author
 
 
 @pytest.fixture()
-def book(author, db_session):
-    db = db_session
+def book(author: Author, session: Session):
+    db = session
     book = Book(
-        id=1,
         title="Awesome Book",
         publisher="Self",
         published_year=2021,
@@ -59,9 +35,7 @@ def book(author, db_session):
 
     db.add(book)
     db.commit()
-    db.refresh(book)
-    
-    return book
+    yield book
 
 
 @pytest.fixture()
@@ -75,7 +49,7 @@ def book_two():
         average_rating = 4.9,
         authors = [{"first_name":"John", "last_name": "Doe"}]
     )
-    return book.dict()
+    yield book.dict()
 
 
 @pytest.fixture()
@@ -84,7 +58,7 @@ def book_three(book_two):
     book["authors"][0]["first_name"] = "Marcus"
     book["authors"][0]["last_name"] = "Smart"
 
-    return book
+    yield book
 
 
 @pytest.fixture()
@@ -94,12 +68,16 @@ def book_updates():
         published_year = 1989,
         average_rating = 4.8
     ).dict()
-    return updates
+    yield updates
 
 
-def test_get_book(client, book):
+def test_get_book(db_setup, session: Session, client: TestClient, book: Book):
 
-    response = client.get("/books/1")
+    db_book = session.query(Book).filter(
+        Book.title == book.title
+    ).one()
+
+    response = client.get(f"/books/{db_book.id}")
     assert response.status_code == 200
     book_data = response.json()
 
@@ -120,13 +98,12 @@ def test_get_book_unknown(client):
     assert response.json() == {"detail": "Book not found"}
 
 
-def test_create_book(client, book_two):
+def test_create_book(client: TestClient, author: Author, book_two: BookCreate):
 
     response = client.post("/books/", json=book_two)
     assert response.status_code == 201
     data = response.json()
 
-    assert data["id"] == 2
     assert data["title"] == "Band Of Brothers"
     assert data["publisher"] == "Amazon"
     assert data["published_year"] == 2000
@@ -135,25 +112,33 @@ def test_create_book(client, book_two):
     assert data["average_rating"] == 4.9
 
 
-def test_create_book_no_author(client, book_three):
+def test_create_book_no_author(client: TestClient, book_three: BookCreate):
 
     response = client.post("/books/", json=book_three)
     assert response.status_code == 404
     assert response.json() == {"detail": "Author not found. Please create an Author entry for Marcus Smart"}
 
 
-def test_update_book(client, book_updates):
+def test_update_book(session: Session, client: TestClient, book: Book, book_updates: BookUpdate):
     
-    response = client.patch("/books/1", json=book_updates)
+    db_book = session.query(Book).filter(
+        Book.title == book.title
+    ).one()
+
+    response = client.patch(f"/books/{db_book.id}", json=book_updates)
     data = response.json()
 
-    assert data["id"] == 1
+    assert data["id"] == db_book.id
     assert data["publisher"] == "Apple"
     assert data["published_year"] == 1989
     assert data["average_rating"] == 4.8
 
 
-def test_delete_book(client):
+def test_delete_book(session: Session, client: TestClient, book: Book):
 
-    response = client.delete("/books/1")
+    db_book = session.query(Book).filter(
+        Book.title == book.title
+    ).first()
+
+    response = client.delete(f"/books/{db_book.id}")
     assert response.json() == {"message": "Awesome Book was deleted"}

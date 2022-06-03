@@ -4,15 +4,9 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
 DEBUG = config("DEBUG", default=False, cast=bool)
-DEV = config("DEV")
-TEST = config("TEST")
+DATABASE_URL = config("DATABASE_URL")
 
-dev_engine = create_engine(DEV, echo=DEBUG)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=dev_engine)
-
-
-test_engine = create_engine(TEST, echo=DEBUG)
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=test_engine)
-
+engine = create_engine(DATABASE_URL, echo=DEBUG)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()

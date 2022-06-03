@@ -23,7 +23,7 @@ class Book(Base):
 
     __tablename__ = "books"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
     title = Column(String)
     publisher = Column(String)
     published_year = Column(Integer)
@@ -39,7 +39,7 @@ class Author(Base):
 
     __tablename__ = "authors"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
     first_name = Column(String)
     last_name = Column(String)
 
@@ -60,7 +60,7 @@ class ReadingList(Base):
 
     __tablename__ = "reading_lists"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
     title = Column(String)
     user_id = Column(Integer, ForeignKey("users.id"))
 

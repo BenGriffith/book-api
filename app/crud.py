@@ -14,7 +14,7 @@ def write_user(db: Session, user: UserCreate):
         ).first()
 
     if email:
-        raise HTTPException(status_code=404, detail="Please use different email address")
+        raise HTTPException(status_code=400, detail="Please use different email address")
 
     user = User(
         email=user.email,
@@ -31,6 +31,15 @@ def write_user(db: Session, user: UserCreate):
 def read_user(db: Session, user_id: int):
     user = db.get(User, user_id)
     return user
+
+
+def get_user_id(db: Session, user_email: str):
+
+    user = db.query(User).filter(
+        func.lower(User.email) == func.lower(user_email)
+    ).first()
+
+    return user.id
 
 
 def update_user(db: Session, user: User, updates: UserUpdate):
@@ -156,7 +165,7 @@ def delete_book(db: Session, book: Book):
     return {"message": f"{book.title} was deleted"}
 
 
-def write_list(db: Session, reading_list: ReadingListCreate):
+def write_list(db: Session, user_id: int, reading_list: ReadingListCreate):
 
     books = []
     for book in reading_list.books:
@@ -172,14 +181,10 @@ def write_list(db: Session, reading_list: ReadingListCreate):
 
         books.append(db_book)
 
-    db_user = db.query(User).filter(
-        func.lower(User.email) == func.lower(reading_list.user_email)
-    ).first()
-
     db_list = ReadingList(
         title = reading_list.title,
-        user_id = db_user.id,
-        books = books
+        books = books,
+        user_id = user_id
     )
 
     db.add_all(books + [db_list])
