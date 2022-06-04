@@ -2,7 +2,6 @@ import pytest
 from sqlalchemy.orm import Session
 from fastapi.testclient import TestClient
 
-from tests.conftest import db_setup, db_session, client
 from app.models import Author
 from app.schemas import AuthorCreate, AuthorUpdate
 
@@ -24,7 +23,7 @@ def author_two(session: Session):
         first_name="John",
         last_name="Doe"
     )
-    
+
     db.add(author)
     db.commit()
     yield author
@@ -53,7 +52,7 @@ def author_four():
     yield author
 
 
-def test_create_author(db_setup, client: TestClient, author_one: AuthorCreate):
+def test_create_author(client: TestClient, author_one: AuthorCreate):
 
     response = client.post("/authors/", json=author_one)
     assert response.status_code == 201
@@ -66,7 +65,7 @@ def test_create_author(db_setup, client: TestClient, author_one: AuthorCreate):
 def test_get_author_two(session: Session, client: TestClient, author_two: Author):
 
     db_author = session.query(Author).filter(
-        Author.first_name == author_two.first_name, 
+        Author.first_name == author_two.first_name,
         Author.last_name == author_two.last_name
         ).first()
 
