@@ -3,6 +3,15 @@ from typing import Optional
 from pydantic import BaseModel
 
 
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+
+class TokenData(BaseModel):
+    username: str = None
+
+
 class AuthorBase(BaseModel):
     first_name: str
     last_name: str
@@ -62,7 +71,7 @@ class ReadingListBase(BaseModel):
 
 class ReadingListCreate(ReadingListBase):
     books: list[str]
-    user_email: Optional[str] = None
+    username: Optional[str] = None
 
 
 class ReadingList(ReadingListBase):
@@ -75,13 +84,14 @@ class ReadingList(ReadingListBase):
 
 
 class UserBase(BaseModel):
+    username: str
     email: str
     first_name: str
     last_name: str
 
 
 class UserCreate(UserBase):
-    pass
+    password: str
 
 
 class User(UserBase):
