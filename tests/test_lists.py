@@ -1,59 +1,28 @@
 import pytest
+from sqlalchemy.orm import Session
 from fastapi.testclient import TestClient
 
-from app.db import TestingSessionLocal, dev_engine
-from app.main import app, get_db
-from app import models
+from app.models import Author, Book, ReadingList
 from app.schemas import ReadingListCreate
 
 
-def override_get_db():
-    try:
-        db = TestingSessionLocal()
-        yield db
-    finally:
-        db.close()
-
-app.dependency_overrides[get_db] = override_get_db
-
 @pytest.fixture()
-def db_session():
-    try:
-        db = TestingSessionLocal()
-        yield db
-    finally:
-        db.close()
-
-
-@pytest.fixture()
-def client():
-    client = TestClient(app)
-    return client
-
-@pytest.fixture()
-def db_cleanup():
-    models.Base.metadata.drop_all(bind=dev_engine)
-
-
-@pytest.fixture()
-def author(db_session):
-    db = db_session
-    author = models.Author(
+def author(session: Session):
+    db = session
+    author = Author(
         first_name="John",
         last_name="Doe"
     )
-    
+
     db.add(author)
     db.commit()
-    db.refresh(author)
-
-    return author
+    yield author
 
 
 @pytest.fixture()
-def book(author, db_session):
-    db = db_session
-    book = models.Book(
+def book(author: Author, session: Session):
+    db = session
+    book = Book(
         title="Awesome Book",
         publisher="Self",
         published_year=2021,
@@ -65,38 +34,46 @@ def book(author, db_session):
 
     db.add(book)
     db.commit()
-    db.refresh(book)
-    
-    return book
+    yield book
 
 
 @pytest.fixture()
-def reading_list():
+def reading_list_one(session: Session):
+    db = session
+    reading_list = ReadingList(
+        title="my list"
+    )
+    db.add(reading_list)
+    db.commit()
+    yield reading_list
+
+
+@pytest.fixture()
+def reading_list_two():
     request = ReadingListCreate(
         title="my list",
         books=["Awesome Book"]
     ).dict()
-
-    return request
+    yield request
 
 
 @pytest.fixture()
-def reading_list_request():
+def reading_list_three():
     request = ReadingListCreate(
         title="My List",
         books=["book that doesn't exist"]
     ).dict()
-    return request
+    yield request
 
 
-def test_create_list_book_not_found(client, reading_list_request):
-    response = client.post("/lists/", json=reading_list_request)
+def test_create_list_book_not_found(client: TestClient, reading_list_three: ReadingListCreate):
+    response = client.post("/lists/", json=reading_list_three)
     assert response.status_code == 404
-    assert response.json() == {"detail": f"Book not found. Please create a Book entry for {reading_list_request['books'][0].title()}"}
+    assert response.json() == {"detail": f"Book not found. Please create a Book entry for {reading_list_three['books'][0].title()}"}
 
 
-def test_create_list(client, book, reading_list):
-    list_response = client.post("/lists/", json=reading_list)
+def test_create_list(client: TestClient, book: Book, reading_list_two: ReadingListCreate):
+    list_response = client.post("/lists/", json=reading_list_two)
     assert list_response.status_code == 201
     data = list_response.json()
     assert data["title"] == "my list"
@@ -109,16 +86,16 @@ def test_create_list(client, book, reading_list):
     assert books["average_rating"] == book.average_rating
 
 
-def test_delete_list_not_found(client):
+def test_delete_list_not_found(client: TestClient):
     response = client.delete("/lists/5")
     assert response.status_code == 404
     assert response.json() == {"detail": "Reading List not found"}
 
 
-def test_delete_list(client):
-    response = client.delete("/lists/1")
+def test_delete_list(session: Session, client: TestClient, reading_list_one: ReadingList):
+    db_reading_list = session.query(ReadingList).filter(
+        ReadingList.title == reading_list_one.title
+    ).one()
+
+    response = client.delete(f"/lists/{db_reading_list.id}")
     assert response.json() == {"message": "my list was deleted"}
-
-
-def test_db_cleanup(db_cleanup):
-    pass

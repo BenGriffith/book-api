@@ -1,39 +1,9 @@
 import pytest
+from sqlalchemy.orm import Session
 from fastapi.testclient import TestClient
 
-from app.db import TestingSessionLocal, dev_engine
-from app.main import app, get_db
-from app import models
+from app.models import User, Author, Book, ReadingList
 from app.schemas import UserCreate, UserUpdate, ReadingListCreate
-
-
-def override_get_db():
-    try:
-        db = TestingSessionLocal()
-        yield db
-    finally:
-        db.close()
-
-app.dependency_overrides[get_db] = override_get_db
-
-@pytest.fixture()
-def db_session():
-    try:
-        db = TestingSessionLocal()
-        yield db
-    finally:
-        db.close()
-
-
-@pytest.fixture()
-def client():
-    client = TestClient(app)
-    return client
-
-
-@pytest.fixture()
-def db_cleanup():
-    models.Base.metadata.drop_all(bind=dev_engine)
 
 
 @pytest.fixture()
@@ -43,20 +13,20 @@ def user_one():
         first_name="Elaine",
         last_name="Benes"
     ).dict()
-    return user
+    yield user
 
 
 @pytest.fixture()
-def user_two(db_session):
-    db = db_session
-    user = models.User(
+def user_two(session: Session):
+    db = session
+    user = User(
         email="user_two@test.com",
         first_name="Jerry",
         last_name="Seinfeld"
     )
-
     db.add(user)
     db.commit()
+    yield user
 
 
 @pytest.fixture()
@@ -66,7 +36,7 @@ def user_three():
         first_name="Newman",
         last_name="USPS"
     ).dict()
-    return user
+    yield user
 
 
 @pytest.fixture()
@@ -76,22 +46,22 @@ def user_two_update():
         first_name="Ben",
         last_name="Stiller"
     ).dict()
-    return user
+    yield user
 
 
 @pytest.fixture()
-def assign_user_to_reading_list(db_session):
-    db = db_session
+def assign_user_to_reading_list(session: Session):
+    db = session
 
     # create Author
-    author = models.Author(
+    author = Author(
         first_name="Stephen",
         last_name="King"
     )
 
 
     # create Book One
-    book_one = models.Book(
+    book_one = Book(
         title="It",
         publisher="Company A",
         published_year=1986,
@@ -103,7 +73,7 @@ def assign_user_to_reading_list(db_session):
 
 
     # create Book Two
-    book_two = models.Book(
+    book_two = Book(
         title="The Shining",
         publisher="Company A",
         published_year=1977,
@@ -118,18 +88,18 @@ def assign_user_to_reading_list(db_session):
     db.add(book_two)
     db.commit()
 
-    # create Reading List assigned to user 
+    # create Reading List assigned to user
     reading_list = ReadingListCreate(
-        title=f"books to read",
+        title="books to read",
         books=[book_one.title, book_two.title],
         user_email="new_email@test.com"
     ).dict()
 
-    return reading_list
+    yield reading_list
 
 
-def test_create_user(client, user_one):
-    
+def test_create_user(client: TestClient, user_one: UserCreate):
+
     response = client.post("/users/", json=user_one)
     assert response.status_code == 201
     data = response.json()
@@ -139,59 +109,90 @@ def test_create_user(client, user_one):
     assert data["last_name"] == "Benes"
 
 
-def test_get_user(client, user_two):
-    
-    response = client.get("/users/2")
+def test_get_user(session: Session, client: TestClient, user_two: User):
+
+    db_user = session.query(User).filter(
+        User.email == user_two.email
+    ).first()
+
+    response = client.get(f"/users/{db_user.id}")
     assert response.status_code == 200
     data = response.json()
 
     assert data["email"] == "user_two@test.com"
     assert data["first_name"] == "Jerry"
     assert data["last_name"] == "Seinfeld"
-    
 
-def test_create_user_same_email(client, user_three):
+
+def test_create_user_same_email(session: Session, client: TestClient, user_three: User):
+
+    user = User(
+        email="user_TWO@test.com",
+        first_name="Joe",
+        last_name="Jackson"
+    )
+    db = session
+    db.add(user)
+    db.commit()
 
     response = client.post("/users/", json=user_three)
     assert response.status_code == 400
     assert response.json() == {"detail": "Please use different email address"}
 
 
-def test_update_user(client, user_two_update):
-    
-    response = client.put("/users/2", json=user_two_update)
+def test_update_user(session: Session, client: TestClient, user_two: User, user_two_update: UserUpdate):
+
+    db_user = session.query(User).filter(
+        User.email == user_two.email
+    ).first()
+
+    response = client.put(f"/users/{db_user.id}", json=user_two_update)
     data = response.json()
 
-    assert data["id"] == 2
+    assert data["id"] == db_user.id
     assert data["email"] == "new_email@test.com"
     assert data["first_name"] == "Ben"
     assert data["last_name"] == "Stiller"
 
 
-def test_delete_user(client):
+def test_delete_user(session: Session, client: TestClient, user_two: User):
 
-    response = client.delete("/users/1")
-    assert response.json() == {"message": "Elaine Benes was deleted"}
+    db_user = session.query(User).filter(
+        User.email == user_two.email
+    ).first()
+
+    response = client.delete(f"/users/{db_user.id}")
+    assert response.json() == {"message": f"{db_user.first_name} {db_user.last_name} was deleted"}
 
 
 def test_delete_user_not_exist(client):
-    
+
     response = client.delete("/users/100")
     assert response.status_code == 404
     assert response.json() == {"detail": "User not found"}
 
 
-def test_assign_user_to_reading_list(client, assign_user_to_reading_list):
+def test_assign_user_to_reading_list(session: Session, client: TestClient, assign_user_to_reading_list: ReadingListCreate):
+
+    user = User(
+        email="new_email@test.com",
+        first_name="Jerry",
+        last_name="Rice"
+    )
+    db = session
+    db.add(user)
+    db.commit()
 
     response = client.post("/lists/", json=assign_user_to_reading_list)
+
+    db_list = db.query(ReadingList).filter(
+        ReadingList.title == assign_user_to_reading_list["title"]
+    ).first()
+
     assert response.status_code == 201
     data = response.json()
 
     assert data["title"] == "books to read"
     assert data["books"][0]["title"] == "It"
     assert data["books"][1]["title"] == "The Shining"
-    assert data["user_id"] == 2
-
-
-def test_db_cleanup(db_cleanup):
-    pass
+    assert data["user_id"] == db_list.user_id

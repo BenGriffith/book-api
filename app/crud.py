@@ -33,6 +33,15 @@ def read_user(db: Session, user_id: int):
     return user
 
 
+def get_user_id(db: Session, user_email: str):
+
+    user = db.query(User).filter(
+        func.lower(User.email) == func.lower(user_email)
+    ).first()
+
+    return user.id
+
+
 def update_user(db: Session, user: User, updates: UserUpdate):
     update_data = updates.dict(exclude_unset=True)
 
@@ -156,7 +165,7 @@ def delete_book(db: Session, book: Book):
     return {"message": f"{book.title} was deleted"}
 
 
-def write_list(db: Session, reading_list: ReadingListCreate):
+def write_list(db: Session, user_id: int, reading_list: ReadingListCreate):
 
     books = []
     for book in reading_list.books:
@@ -172,21 +181,11 @@ def write_list(db: Session, reading_list: ReadingListCreate):
 
         books.append(db_book)
 
-    db_user = db.query(User).filter(
-        func.lower(User.email) == func.lower(reading_list.user_email)
-    ).first()
-
-    if db_user is None:
-        db_list = ReadingList(
-            title = reading_list.title,
-            books = books
-        )
-    else:
-        db_list = ReadingList(
-            title = reading_list.title,
-            books = books,
-            user_id = db_user.id
-        )
+    db_list = ReadingList(
+        title = reading_list.title,
+        books = books,
+        user_id = user_id
+    )
 
     db.add_all(books + [db_list])
     db.commit()
