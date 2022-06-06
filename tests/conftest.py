@@ -1,11 +1,13 @@
 import pytest
 from sqlalchemy_utils import database_exists, create_database
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session
 from fastapi.testclient import TestClient
+from passlib.context import CryptContext
 
 from app.db import engine
-from app.main import app, get_db
+from app.main import app, get_db, pwd_context
 from app import models
+
 
 @pytest.fixture(scope="session", autouse=True)
 def db_setup():
@@ -36,3 +38,9 @@ def client(session: Session):
     app.dependency_overrides[get_db] = override_get_db
     client = TestClient(app)
     return client
+
+
+@pytest.fixture(name="pwd")
+def pwd():
+    pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+    yield pwd_context

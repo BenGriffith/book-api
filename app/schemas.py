@@ -103,4 +103,4 @@ class User(UserBase):
 
 
 class UserUpdate(UserBase):
-    pass
+    password: str

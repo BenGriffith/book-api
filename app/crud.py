@@ -2,11 +2,12 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy import func
 from fastapi import HTTPException
+from passlib.context import CryptContext
 
-from .main import pwd_context
 from .models import User, Author, Book, ReadingList
 from .schemas import UserCreate, UserUpdate, AuthorCreate, AuthorUpdate, BookCreate, BookUpdate, ReadingListCreate
 
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 def write_user(db: Session, user: UserCreate):
 

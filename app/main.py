@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
+from sqlalchemy_utils import database_exists, create_database
 from passlib.context import CryptContext
 from jose import JWTError, jwt
 
@@ -28,6 +29,9 @@ def get_db():
 
 @app.on_event("startup")
 def on_startup():
+    if not database_exists(engine.url):
+        create_database(engine.url)
+
     models.Base.metadata.create_all(bind=engine)
 
 

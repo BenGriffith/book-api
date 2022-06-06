@@ -1,28 +1,34 @@
 import pytest
 from sqlalchemy.orm import Session
 from fastapi.testclient import TestClient
+from passlib.context import CryptContext
 
 from app.models import User, Author, Book, ReadingList
 from app.schemas import UserCreate, UserUpdate, ReadingListCreate
+from app.crud import get_user
 
 
 @pytest.fixture()
-def user_one():
+def user_one(pwd: CryptContext):
     user = UserCreate(
+        username="elainebenes",
         email="user_one@test.com",
         first_name="Elaine",
-        last_name="Benes"
+        last_name="Benes",
+        password="rhodeisland"
     ).dict()
     yield user
 
 
 @pytest.fixture()
-def user_two(session: Session):
+def user_two(session: Session, pwd: CryptContext):
     db = session
     user = User(
+        username="jerryseinfeld",
         email="user_two@test.com",
         first_name="Jerry",
-        last_name="Seinfeld"
+        last_name="Seinfeld",
+        password=pwd.hash("newyork")
     )
     db.add(user)
     db.commit()
@@ -32,9 +38,11 @@ def user_two(session: Session):
 @pytest.fixture()
 def user_three():
     user = UserCreate(
+        username="newmanthemailman",
         email="user_TWO@test.com",
         first_name="Newman",
-        last_name="USPS"
+        last_name="USPS",
+        password="foreveryoung"
     ).dict()
     yield user
 
@@ -42,9 +50,11 @@ def user_three():
 @pytest.fixture()
 def user_two_update():
     user = UserUpdate(
+        username="benstiller",
         email="new_email@test.com",
         first_name="Ben",
-        last_name="Stiller"
+        last_name="Stiller",
+        password="password123"
     ).dict()
     yield user
 
@@ -92,44 +102,51 @@ def assign_user_to_reading_list(session: Session):
     reading_list = ReadingListCreate(
         title="books to read",
         books=[book_one.title, book_two.title],
-        user_email="new_email@test.com"
+        username="jerryrice"
     ).dict()
 
     yield reading_list
 
 
-def test_create_user(client: TestClient, user_one: UserCreate):
+def test_create_user(session: Session, client: TestClient, user_one: UserCreate, pwd: CryptContext):
 
     response = client.post("/users/", json=user_one)
     assert response.status_code == 201
     data = response.json()
 
-    assert data["email"] == "user_one@test.com"
-    assert data["first_name"] == "Elaine"
-    assert data["last_name"] == "Benes"
+    assert data["username"] == user_one["username"]
+    assert data["email"] == user_one["email"]
+    assert data["first_name"] == user_one["first_name"]
+    assert data["last_name"] == user_one["last_name"]
+
+    user = get_user(db=session, username=data["username"])
+
+    assert pwd.verify(user_one["password"], user.password)
 
 
-def test_get_user(session: Session, client: TestClient, user_two: User):
+def test_get_user(session: Session, client: TestClient, user_two: User, pwd: CryptContext):
 
-    db_user = session.query(User).filter(
-        User.email == user_two.email
-    ).first()
+    user = get_user(db=session, username=user_two.username)
 
-    response = client.get(f"/users/{db_user.id}")
+    response = client.get(f"/users/{user.id}")
     assert response.status_code == 200
     data = response.json()
 
-    assert data["email"] == "user_two@test.com"
-    assert data["first_name"] == "Jerry"
-    assert data["last_name"] == "Seinfeld"
+    assert data["username"] == user_two.username
+    assert data["email"] == user_two.email
+    assert data["first_name"] == user_two.first_name
+    assert data["last_name"] == user_two.last_name
+    assert pwd.verify("newyork", user.password)
 
 
-def test_create_user_same_email(session: Session, client: TestClient, user_three: User):
+def test_create_user_same_email(session: Session, client: TestClient, user_three: User, pwd: CryptContext):
 
     user = User(
+        username="joejackson",
         email="user_TWO@test.com",
         first_name="Joe",
-        last_name="Jackson"
+        last_name="Jackson",
+        password=pwd.hash("whitesox")
     )
     db = session
     db.add(user)
@@ -140,29 +157,27 @@ def test_create_user_same_email(session: Session, client: TestClient, user_three
     assert response.json() == {"detail": "Please use different email address"}
 
 
-def test_update_user(session: Session, client: TestClient, user_two: User, user_two_update: UserUpdate):
+def test_update_user(session: Session, client: TestClient, user_two: User, user_two_update: UserUpdate, pwd: CryptContext):
 
-    db_user = session.query(User).filter(
-        User.email == user_two.email
-    ).first()
+    user = get_user(db=session, username=user_two.username)
 
-    response = client.put(f"/users/{db_user.id}", json=user_two_update)
+    response = client.put(f"/users/{user.id}", json=user_two_update)
     data = response.json()
 
-    assert data["id"] == db_user.id
-    assert data["email"] == "new_email@test.com"
-    assert data["first_name"] == "Ben"
-    assert data["last_name"] == "Stiller"
+    assert data["id"] == user.id
+    assert data["email"] == user_two.email
+    assert data["first_name"] == user_two.first_name
+    assert data["last_name"] == user_two.last_name
+    assert data["username"] == user_two.username
+    assert pwd.verify("password123", user.password)
 
 
 def test_delete_user(session: Session, client: TestClient, user_two: User):
 
-    db_user = session.query(User).filter(
-        User.email == user_two.email
-    ).first()
+    user = get_user(db=session, username=user_two.username)
 
-    response = client.delete(f"/users/{db_user.id}")
-    assert response.json() == {"message": f"{db_user.first_name} {db_user.last_name} was deleted"}
+    response = client.delete(f"/users/{user.id}")
+    assert response.json() == {"message": f"{user.first_name} {user.last_name} was deleted"}
 
 
 def test_delete_user_not_exist(client):
@@ -172,12 +187,14 @@ def test_delete_user_not_exist(client):
     assert response.json() == {"detail": "User not found"}
 
 
-def test_assign_user_to_reading_list(session: Session, client: TestClient, assign_user_to_reading_list: ReadingListCreate):
+def test_assign_user_to_reading_list(session: Session, client: TestClient, assign_user_to_reading_list: ReadingListCreate, pwd: CryptContext):
 
     user = User(
+        username="jerryrice",
         email="new_email@test.com",
         first_name="Jerry",
-        last_name="Rice"
+        last_name="Rice",
+        password="proform"
     )
     db = session
     db.add(user)
