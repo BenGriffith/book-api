@@ -2,12 +2,21 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy import func
 from fastapi import HTTPException
+from passlib.context import CryptContext
 
 from .models import User, Author, Book, ReadingList
 from .schemas import UserCreate, UserUpdate, AuthorCreate, AuthorUpdate, BookCreate, BookUpdate, ReadingListCreate
 
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 def write_user(db: Session, user: UserCreate):
+
+    username = db.query(User).filter(
+        func.lower(User.username) == func.lower(user.username)
+    ).first()
+
+    if username:
+        raise HTTPException(status_code=400, detail="Please use different username")
 
     email = db.query(User).filter(
         func.lower(User.email) == func.lower(user.email)
@@ -17,7 +26,9 @@ def write_user(db: Session, user: UserCreate):
         raise HTTPException(status_code=400, detail="Please use different email address")
 
     user = User(
+        username=user.username,
         email=user.email,
+        password=pwd_context.hash(user.password),
         first_name=user.first_name,
         last_name=user.last_name
     )
@@ -33,19 +44,24 @@ def read_user(db: Session, user_id: int):
     return user
 
 
-def get_user_id(db: Session, user_email: str):
+def get_user(db: Session, username: str):
 
-    user = db.query(User).filter(
-        func.lower(User.email) == func.lower(user_email)
-    ).first()
+    try:
+        user = db.query(User).filter(
+            func.lower(User.username) == func.lower(username)
+        ).one()
+    except NoResultFound:
+        return None
 
-    return user.id
+    return read_user(db=db, user_id=user.id)
 
 
 def update_user(db: Session, user: User, updates: UserUpdate):
     update_data = updates.dict(exclude_unset=True)
 
+    user.username = update_data["username"]
     user.email = update_data["email"]
+    user.password = pwd_context.hash(update_data["password"])
     user.first_name = update_data["first_name"]
     user.last_name = update_data["last_name"]
 

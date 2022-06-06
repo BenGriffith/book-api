@@ -1,13 +1,23 @@
-from fastapi import Depends, FastAPI, HTTPException
+from datetime import datetime, timedelta
+
+from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
+from sqlalchemy_utils import database_exists, create_database
+from passlib.context import CryptContext
+from jose import JWTError, jwt
 
 from app import crud
 from app import models
-from app.schemas import User, UserCreate, UserUpdate, Author, AuthorCreate, AuthorUpdate, Book, BookCreate, BookUpdate, ReadingList, ReadingListCreate
-from app.db import SessionLocal, engine
+from app.schemas import User, UserCreate, UserUpdate, Author, AuthorCreate, AuthorUpdate, Book, BookCreate, BookUpdate, ReadingList, ReadingListCreate, Token, TokenData
+from app.db import SessionLocal, engine, SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
 
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 app = FastAPI()
+
 
 def get_db():
     db = SessionLocal()
@@ -19,8 +29,96 @@ def get_db():
 
 @app.on_event("startup")
 def on_startup():
+    if not database_exists(engine.url):
+        create_database(engine.url)
+
     models.Base.metadata.create_all(bind=engine)
 
+
+def verify_password(plain_password, password):
+    return pwd_context.verify(plain_password, password)
+
+
+def get_password_hash(password):
+    return pwd_context.hash(password)
+
+
+def authenticate_user(username: str, password: str, db: Session = Depends(get_db)):
+    user = crud.get_user(db=db, username=username)
+
+    if user is None:
+        return False
+    if verify_password(password, user.password) is None:
+        return False
+
+    return user
+
+
+def create_access_token(data: dict, expires_delta: timedelta = None):
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(minutes=15)
+    
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
+
+def decode_token(db: Session, token):
+    user = crud.get_user(db=db, username=token)
+    if user is None:
+        return None
+    
+    return user
+
+
+def get_current_user(db: Session = Depends(get_db), token: str = Depends(oauth2_scheme)):
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"}
+    )
+
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = payload.get("sub")
+        if username is None:
+            raise credentials_exception
+        token_data = TokenData(username=username)
+    except JWTError:
+        raise credentials_exception
+
+    user = decode_token(db=db, token=token_data.username)
+
+    if user is None:
+        raise credentials_exception
+
+    return user
+
+
+@app.post("/token", response_model=Token)
+def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+    user = authenticate_user(username=form_data.username, password=form_data.password, db=db)
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"}
+        )
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": user.username}, expires_delta=access_token_expires
+    )
+
+    return {"access_token": access_token, "token_type": "bearer"}
+
+
+@app.get("/users/me", response_model=User)
+def get_users_me(current_user: User = Depends(get_current_user)):
+    return current_user
+    
 
 @app.post("/users/", response_model=User, status_code=201)
 def create_user(user: UserCreate, db: Session = Depends(get_db)):
@@ -142,8 +240,9 @@ def delete_book(book_id: int, db: Session = Depends(get_db)):
 @app.post("/lists/", response_model=ReadingList, status_code=201)
 def create_list(reading_list: ReadingListCreate, db: Session = Depends(get_db)):
     user_id = None
-    if reading_list.user_email:
-        user_id = crud.get_user_id(db=db, user_email=reading_list.user_email)
+
+    if reading_list.username:
+        user_id = crud.get_user(db=db, username=reading_list.username).id
 
     return crud.write_list(db=db, user_id=user_id, reading_list=reading_list)
 
