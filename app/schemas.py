@@ -39,6 +39,7 @@ class BookBase(BaseModel):
     description: Optional[str] = None
     page_count: Optional[int] = 0
     average_rating: Optional[float] = None
+    user_id: int
     authors: list[AuthorBase]
 
 
@@ -52,6 +53,7 @@ class BookCreate(BookBase):
 
 class Book(BookBase):
     id: int
+    user_id: int
     authors: list[Author]
 
     class Config:
@@ -71,7 +73,6 @@ class ReadingListBase(BaseModel):
 
 class ReadingListCreate(ReadingListBase):
     books: list[str]
-    username: Optional[str] = None
 
 
 class ReadingList(ReadingListBase):

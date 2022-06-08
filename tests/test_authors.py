@@ -2,7 +2,7 @@ import pytest
 from sqlalchemy.orm import Session
 from fastapi.testclient import TestClient
 
-from app.models import Author
+from app.models import Author, User
 from app.schemas import AuthorCreate, AuthorUpdate
 
 
@@ -52,9 +52,9 @@ def author_four():
     yield author
 
 
-def test_create_author(client: TestClient, author_one: AuthorCreate):
+def test_create_author(client: TestClient, author_one: AuthorCreate, current_user: User):
 
-    response = client.post("/authors/", json=author_one)
+    response = client.post("/authors/", json=author_one, headers=current_user)
     assert response.status_code == 201
     data = response.json()
 
@@ -62,14 +62,21 @@ def test_create_author(client: TestClient, author_one: AuthorCreate):
     assert data["last_name"] == "Costanza"
 
 
-def test_get_author_two(session: Session, client: TestClient, author_two: Author):
+def test_create_author_locked(client: TestClient, author_one: AuthorCreate):
+
+    response = client.post("/authors/", json=author_one)
+    assert response.status_code == 401
+    assert response.json() == {"detail": "Not authenticated"}
+
+
+def test_get_author_two(session: Session, client: TestClient, author_two: Author, current_user: User):
 
     db_author = session.query(Author).filter(
         Author.first_name == author_two.first_name,
         Author.last_name == author_two.last_name
         ).first()
 
-    response = client.get(f"/authors/{db_author.id}")
+    response = client.get(f"/authors/{db_author.id}", headers=current_user)
     assert response.status_code == 200
     data = response.json()
 
@@ -78,14 +85,26 @@ def test_get_author_two(session: Session, client: TestClient, author_two: Author
     assert data["last_name"] == "Doe"
 
 
-def test_get_author_three(session: Session, client: TestClient, author_three: Author):
+def test_get_author_two_locked(session: Session, client: TestClient, author_two: Author):
+
+    db_author = session.query(Author).filter(
+        Author.first_name == author_two.first_name,
+        Author.last_name == author_two.last_name
+        ).first()
+
+    response = client.get(f"/authors/{db_author.id}")
+    assert response.status_code == 401
+    assert response.json() == {"detail": "Not authenticated"}
+
+
+def test_get_author_three(session: Session, client: TestClient, author_three: Author, current_user: User):
 
     db_author = session.query(Author).filter(
         Author.first_name == author_three.first_name,
         Author.last_name == author_three.last_name
     ).first()
 
-    response = client.get(f"/authors/{db_author.id}")
+    response = client.get(f"/authors/{db_author.id}", headers=current_user)
     assert response.status_code == 200
     data = response.json()
 
@@ -107,7 +126,21 @@ def test_get_authors(client: TestClient, author_two: Author, author_three: Autho
         assert data[i]["first_name"] == first_names[i]
 
 
-def test_update_author(session: Session, client: TestClient, author_two: Author, author_four: AuthorUpdate):
+def test_update_author(session: Session, client: TestClient, author_two: Author, author_four: AuthorUpdate, current_user: User):
+
+    db_author = session.query(Author).filter(
+        Author.first_name == author_two.first_name,
+        Author.last_name == author_two.last_name
+    ).first()
+
+    response = client.patch(f"/authors/{db_author.id}", json=author_four, headers=current_user)
+    data = response.json()
+
+    assert data["first_name"] == "Wayne"
+    assert data["last_name"] == "Knight"
+
+
+def test_update_author_locked(session: Session, client: TestClient, author_two: Author, author_four: AuthorUpdate):
 
     db_author = session.query(Author).filter(
         Author.first_name == author_two.first_name,
@@ -115,13 +148,22 @@ def test_update_author(session: Session, client: TestClient, author_two: Author,
     ).first()
 
     response = client.patch(f"/authors/{db_author.id}", json=author_four)
-    data = response.json()
-
-    assert data["first_name"] == "Wayne"
-    assert data["last_name"] == "Knight"
+    assert response.status_code == 401
+    assert response.json() == {"detail": "Not authenticated"}
 
 
-def test_delete_author(session: Session, client: TestClient, author_three: Author):
+def test_delete_author(session: Session, client: TestClient, author_three: Author, current_user: User):
+
+    db_author = session.query(Author).filter(
+        Author.first_name == author_three.first_name,
+        Author.last_name == author_three.last_name
+    ).first()
+
+    response = client.delete(f"/authors/{db_author.id}", headers=current_user)
+    assert response.json() == {"message": "Cosmo Kramer was deleted"}
+
+
+def test_delete_author_locked(session: Session, client: TestClient, author_three: Author):
 
     db_author = session.query(Author).filter(
         Author.first_name == author_three.first_name,
@@ -129,10 +171,11 @@ def test_delete_author(session: Session, client: TestClient, author_three: Autho
     ).first()
 
     response = client.delete(f"/authors/{db_author.id}")
-    assert response.json() == {"message": "Cosmo Kramer was deleted"}
+    assert response.status_code == 401
+    assert response.json() == {"detail": "Not authenticated"}
 
 
-def test_delete_author_not_exist(client: TestClient):
+def test_delete_author_not_exist(client: TestClient, current_user: User):
 
-    response = client.delete("/authors/100")
+    response = client.delete("/authors/100", headers=current_user)
     assert response.json() == {"detail": "Author not found"}

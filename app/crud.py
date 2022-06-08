@@ -114,7 +114,7 @@ def delete_author(db: Session, author: Author):
     return {"message": f"{author.first_name} {author.last_name} was deleted"}
 
 
-def write_book(db: Session, book: BookCreate):
+def write_book(db: Session, book: BookCreate, user_id: User):
 
     authors = []
     for author in book.authors:
@@ -135,14 +135,15 @@ def write_book(db: Session, book: BookCreate):
 
         authors.append(db_author)
 
-    db_book = Book(
+    db_book = Book( 
         title=book.title.title(),
         authors=authors,
         publisher=book.publisher.title(),
         published_year=book.published_year,
         description=book.description,
         page_count=book.page_count,
-        average_rating=book.average_rating
+        average_rating=book.average_rating,
+        user_id = user_id
     )
 
     db.add_all(authors + [db_book])
