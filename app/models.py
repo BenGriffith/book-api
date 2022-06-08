@@ -30,7 +30,9 @@ class Book(Base):
     description = Column(String)
     page_count = Column(Integer)
     average_rating = Column(Float)
+    user_id = Column(Integer, ForeignKey("users.id"))
 
+    user = relationship("User")
     authors = relationship("Author", secondary="book_author", back_populates="books")
     reading_lists = relationship("ReadingList", secondary="book_reading_list", back_populates="books")
 
@@ -50,7 +52,7 @@ class User(Base):
 
     __tablename__ = "users"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
     username = Column(String, unique=True)
     email = Column(String, unique=True)
     password = Column(String)

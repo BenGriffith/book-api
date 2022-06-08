@@ -60,7 +60,10 @@ def user_two_update():
 
 
 @pytest.fixture()
-def assign_user_to_reading_list(session: Session):
+def assign_user_to_reading_list(session: Session, client: TestClient, current_user: User):
+
+    response = client.get("/users/me", headers=current_user)
+
     db = session
 
     # create Author
@@ -78,7 +81,8 @@ def assign_user_to_reading_list(session: Session):
         description="Terrifying",
         page_count=304,
         average_rating=5,
-        authors=[author]
+        authors=[author],
+        user_id=response.json()["id"]
     )
 
 
@@ -90,7 +94,8 @@ def assign_user_to_reading_list(session: Session):
         description="Scary",
         page_count=456,
         average_rating=5,
-        authors=[author]
+        authors=[author],
+        user_id=response.json()["id"]
     )
 
     db.add(author)
@@ -102,7 +107,7 @@ def assign_user_to_reading_list(session: Session):
     reading_list = ReadingListCreate(
         title="books to read",
         books=[book_one.title, book_two.title],
-        username="jerryrice"
+        user_id=response.json()["id"]
     ).dict()
 
     yield reading_list
@@ -124,11 +129,11 @@ def test_create_user(session: Session, client: TestClient, user_one: UserCreate,
     assert pwd.verify(user_one["password"], user.password)
 
 
-def test_get_user(session: Session, client: TestClient, user_two: User, pwd: CryptContext):
+def test_get_user(session: Session, client: TestClient, user_two: User, pwd: CryptContext, current_user: User):
 
     user = get_user(db=session, username=user_two.username)
 
-    response = client.get(f"/users/{user.id}")
+    response = client.get(f"/users/{user.id}", headers=current_user)
     assert response.status_code == 200
     data = response.json()
 
@@ -136,10 +141,20 @@ def test_get_user(session: Session, client: TestClient, user_two: User, pwd: Cry
     assert data["email"] == user_two.email
     assert data["first_name"] == user_two.first_name
     assert data["last_name"] == user_two.last_name
+    assert data["id"] == user.id
     assert pwd.verify("newyork", user.password)
 
 
-def test_create_user_same_email(session: Session, client: TestClient, user_three: User, pwd: CryptContext):
+def test_get_user_locked(session: Session, client: TestClient, user_two: User, pwd: CryptContext):
+
+    user = get_user(db=session, username=user_two.username)
+
+    response = client.get(f"/users/{user.id}")
+    assert response.status_code == 401
+    assert response.json() == {"detail": "Not authenticated"}
+
+
+def test_create_user_same_email(session: Session, client: TestClient, user_three: User, pwd: CryptContext, current_user: User):
 
     user = User(
         username="joejackson",
@@ -152,16 +167,16 @@ def test_create_user_same_email(session: Session, client: TestClient, user_three
     db.add(user)
     db.commit()
 
-    response = client.post("/users/", json=user_three)
+    response = client.post("/users/", json=user_three, headers=current_user)
     assert response.status_code == 400
     assert response.json() == {"detail": "Please use different email address"}
 
 
-def test_update_user(session: Session, client: TestClient, user_two: User, user_two_update: UserUpdate, pwd: CryptContext):
+def test_update_user(session: Session, client: TestClient, user_two: User, user_two_update: UserUpdate, pwd: CryptContext, current_user: User):
 
     user = get_user(db=session, username=user_two.username)
 
-    response = client.put(f"/users/{user.id}", json=user_two_update)
+    response = client.put(f"/users/{user.id}", json=user_two_update, headers=current_user)
     data = response.json()
 
     assert data["id"] == user.id
@@ -172,22 +187,38 @@ def test_update_user(session: Session, client: TestClient, user_two: User, user_
     assert pwd.verify("password123", user.password)
 
 
-def test_delete_user(session: Session, client: TestClient, user_two: User):
+def test_update_user_locked(session: Session, client: TestClient, user_two: User, user_two_update: UserUpdate, pwd: CryptContext):
 
     user = get_user(db=session, username=user_two.username)
 
-    response = client.delete(f"/users/{user.id}")
+    response = client.put(f"/users/{user.id}", json=user_two_update)
+    assert response.status_code == 401
+    assert response.json() == {"detail": "Not authenticated"}
+
+
+def test_delete_user(session: Session, client: TestClient, user_two: User, current_user: User):
+
+    user = get_user(db=session, username=user_two.username)
+
+    response = client.delete(f"/users/{user.id}", headers=current_user)
     assert response.json() == {"message": f"{user.first_name} {user.last_name} was deleted"}
 
 
-def test_delete_user_not_exist(client):
+def test_delete_user_not_exist(client: TestClient, current_user: User):
 
-    response = client.delete("/users/100")
+    response = client.delete("/users/100", headers=current_user)
     assert response.status_code == 404
     assert response.json() == {"detail": "User not found"}
 
 
-def test_assign_user_to_reading_list(session: Session, client: TestClient, assign_user_to_reading_list: ReadingListCreate, pwd: CryptContext):
+def test_delete_user_not_exist(client: TestClient):
+
+    response = client.delete("/users/100")
+    assert response.status_code == 401
+    assert response.json() == {"detail": "Not authenticated"}
+
+
+def test_assign_user_to_reading_list(session: Session, client: TestClient, assign_user_to_reading_list: ReadingListCreate, pwd: CryptContext, current_user: User):
 
     user = User(
         username="jerryrice",
@@ -200,7 +231,7 @@ def test_assign_user_to_reading_list(session: Session, client: TestClient, assig
     db.add(user)
     db.commit()
 
-    response = client.post("/lists/", json=assign_user_to_reading_list)
+    response = client.post("/lists/", json=assign_user_to_reading_list, headers=current_user)
 
     db_list = db.query(ReadingList).filter(
         ReadingList.title == assign_user_to_reading_list["title"]
