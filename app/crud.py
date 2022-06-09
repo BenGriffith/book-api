@@ -4,8 +4,8 @@ from sqlalchemy import func
 from fastapi import HTTPException
 from passlib.context import CryptContext
 
-from .models import User, Author, Book, ReadingList
-from .schemas import UserCreate, UserUpdate, AuthorCreate, AuthorUpdate, BookCreate, BookUpdate, ReadingListCreate
+from app.models import User, Author, Book, ReadingList
+from app.schemas import UserCreate, UserUpdate, AuthorCreate, AuthorUpdate, BookCreate, BookUpdate, ReadingListCreate
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -79,6 +79,14 @@ def delete_user(db: Session, user: User):
 
 def write_author(db: Session, author: AuthorCreate):
 
+    author_exists = db.query(Author).filter(
+        func.lower(Author.first_name) == func.lower(author.first_name),
+        func.lower(Author.last_name) == func.lower(author.last_name)
+    ).first()
+
+    if author_exists:
+        raise HTTPException(status_code=400, detail=f"{author.first_name.capitalize()} {author.last_name.capitalize()} already exists")
+    
     author = Author(first_name=author.first_name.capitalize(), last_name=author.last_name.capitalize())
     db.add(author)
     db.commit()
