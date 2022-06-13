@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from fastapi.testclient import TestClient
 from passlib.context import CryptContext
 
-from app.models import User, Author, Book, ReadingList
+from app.models import User, Book, ReadingList
 from app.schemas import UserCreate, UserUpdate, ReadingListCreate
 from app.crud import get_user
 
@@ -66,22 +66,16 @@ def assign_user_to_reading_list(session: Session, client: TestClient, current_us
 
     db = session
 
-    # create Author
-    author = Author(
-        first_name="Stephen",
-        last_name="King"
-    )
-
-
     # create Book One
     book_one = Book(
         title="It",
+        authors="Stephen King",
         publisher="Company A",
-        published_year=1986,
+        published_date="1986-03-27",
         description="Terrifying",
         page_count=304,
         average_rating=5,
-        authors=[author],
+        google_books_id=None,
         user_id=response.json()["id"]
     )
 
@@ -89,16 +83,15 @@ def assign_user_to_reading_list(session: Session, client: TestClient, current_us
     # create Book Two
     book_two = Book(
         title="The Shining",
+        authors="Stephen King",
         publisher="Company A",
-        published_year=1977,
+        published_date="1977-08-29",
         description="Scary",
         page_count=456,
         average_rating=5,
-        authors=[author],
         user_id=response.json()["id"]
     )
 
-    db.add(author)
     db.add(book_one)
     db.add(book_two)
     db.commit()
@@ -169,7 +162,7 @@ def test_create_user_same_email(session: Session, client: TestClient, user_three
 
     response = client.post("/users/", json=user_three, headers=current_user)
     assert response.status_code == 400
-    assert response.json() == {"detail": "Please use different email address"}
+    assert response.json() == {"detail": "Email address already exists. Please use different email address"}
 
 
 def test_update_user(session: Session, client: TestClient, user_two: User, user_two_update: UserUpdate, pwd: CryptContext, current_user: User):

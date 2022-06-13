@@ -45,7 +45,7 @@ def authenticate_user(username: str, password: str, db: Session = Depends(get_db
 
     if user is None:
         return False
-    if verify_password(password, user.password) is None:
+    if not verify_password(password, user.password):
         return False
 
     return user
@@ -95,7 +95,7 @@ def get_current_user(db: Session = Depends(get_db), token: str = Depends(oauth2_
 @app.post("/token", response_model=schemas.Token)
 def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     user = authenticate_user(username=form_data.username, password=form_data.password, db=db)
-    if user is None:
+    if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
@@ -148,47 +148,6 @@ def delete_user(user_id: int, db: Session = Depends(get_db), current_user: schem
 
     return crud.delete_user(db=db, user=user)
 
-
-@app.post("/authors/", response_model=schemas.Author, status_code=201)
-def create_author(author: schemas.AuthorCreate, db: Session = Depends(get_db), current_user: schemas.User = Depends(get_current_user)):
-    return crud.write_author(db=db, author=author)
-
-
-@app.get("/authors/", response_model=list[schemas.Author], status_code=200)
-def get_authors(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    authors = crud.read_authors(db=db, skip=skip, limit=limit)
-    return authors
-
-
-@app.get("/authors/{author_id}", response_model=schemas.Author, status_code=200)
-def get_author(author_id: int, db: Session = Depends(get_db), current_user: schemas.User = Depends(get_current_user)):
-    author = crud.read_author(db=db, author_id=author_id)
-
-    if author is None:
-        raise HTTPException(status_code=404, detail="Author not found")
-
-    return author
-
-
-@app.patch("/authors/{author_id}")
-def update_author(author_id: int, author: schemas.AuthorUpdate, db: Session = Depends(get_db), current_user: schemas.User = Depends(get_current_user)):
-    existing_author = crud.read_author(db=db, author_id=author_id)
-
-    if existing_author is None:
-        raise HTTPException(status_code=404, detail="Author not found")
-
-    return crud.update_author(db=db, author=existing_author, updates=author)
-
-
-@app.delete("/authors/{author_id}")
-def delete_author(author_id: int, db: Session = Depends(get_db), current_user: schemas.User = Depends(get_current_user)):
-    author = crud.read_author(db=db, author_id=author_id)
-
-    if author is None:
-        raise HTTPException(status_code=404, detail="Author not found")
-
-    return crud.delete_author(db=db, author=author)
-
    
 @app.post("/books/", response_model=schemas.Book, status_code=201)
 def create_book(book: schemas.BookCreate, db: Session = Depends(get_db), current_user: schemas.User = Depends(get_current_user)):    
@@ -211,11 +170,21 @@ def get_book(book_id: int, db: Session = Depends(get_db), current_user: schemas.
     return book
 
 
+@app.get("/books/google/{book_id}", status_code=200)
+def get_google_book(book_id: str, db: Session = Depends(get_db), current_user: schemas.User = Depends(get_current_user)):
+    book = crud.get_google_book(db=db, book_id=book_id)
+
+    if book is not None:
+        raise HTTPException(status_code=400, detail="Book already exists")
+
+    return book
+
+
 @app.patch("/books/{book_id}")
 def update_book(book_id: int, book: schemas.BookUpdate, db: Session = Depends(get_db), current_user: schemas.User = Depends(get_current_user)):
     existing_book = crud.read_book(db=db, book_id=book_id)
 
-    if book is None:
+    if existing_book is None:
         raise HTTPException(status_code=404, detail="Book not found")
 
     return crud.update_book(db=db, book=existing_book, updates=book)
@@ -233,10 +202,6 @@ def delete_book(book_id: int, db: Session = Depends(get_db), current_user: schem
 
 @app.post("/lists/", response_model=schemas.ReadingList, status_code=201)
 def create_list(reading_list: schemas.ReadingListCreate, db: Session = Depends(get_db), current_user: schemas.User = Depends(get_current_user)):
-    # user_id = None
-
-    # if reading_list.username:
-    #     user_id = crud.get_user(db=db, username=reading_list.username).id
 
     return crud.write_list(db=db, user_id=current_user.id, reading_list=reading_list)
 
