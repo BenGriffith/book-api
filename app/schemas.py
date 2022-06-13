@@ -12,35 +12,16 @@ class TokenData(BaseModel):
     username: str = None
 
 
-class AuthorBase(BaseModel):
-    first_name: str
-    last_name: str
-
-
-class AuthorCreate(AuthorBase):
-    pass
-
-
-class Author(AuthorBase):
-    id: int
-
-    class Config:
-        orm_mode = True
-
-
-class AuthorUpdate(AuthorBase):
-    pass
-
-
 class BookBase(BaseModel):
     title: str
+    authors: Optional[str] = None
     publisher: Optional[str] = None
-    published_year: Optional[int] = None
+    published_date: Optional[str] = None
     description: Optional[str] = None
     page_count: Optional[int] = 0
     average_rating: Optional[float] = None
+    google_books_id: Optional[str] = None
     user_id: int
-    authors: list[AuthorBase]
 
 
 class BookBaseReadingList(BaseModel):
@@ -54,7 +35,6 @@ class BookCreate(BookBase):
 class Book(BookBase):
     id: int
     user_id: int
-    authors: list[Author]
 
     class Config:
         orm_mode = True
@@ -62,7 +42,7 @@ class Book(BookBase):
 
 class BookUpdate(BaseModel):
     publisher: Optional[str] = None
-    published_year: Optional[int] = None
+    published_date: Optional[str] = None
     description: Optional[str] = None
     average_rating: Optional[float] = None
 

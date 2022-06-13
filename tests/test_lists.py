@@ -2,37 +2,25 @@ import pytest
 from sqlalchemy.orm import Session
 from fastapi.testclient import TestClient
 
-from app.models import Author, Book, ReadingList, User
+from app.models import Book, ReadingList, User
 from app.schemas import ReadingListCreate
 
 
 @pytest.fixture()
-def author(session: Session):
-    db = session
-    author = Author(
-        first_name="John",
-        last_name="Doe"
-    )
-
-    db.add(author)
-    db.commit()
-    yield author
-
-
-@pytest.fixture()
-def book(author: Author, session: Session, client: TestClient, current_user: User):
+def book(session: Session, client: TestClient, current_user: User):
 
     response = client.get("/users/me", headers=current_user)
 
     db = session
     book = Book(
         title="Awesome Book",
+        authors="Malcolm Gladwell",
         publisher="Self",
-        published_year=2021,
+        published_date="2021-01-20",
         description="must read book",
         page_count=100,
         average_rating=4.6,
-        authors=[author],
+        google_books_id=None,
         user_id=response.json()["id"]
     )
 
@@ -84,7 +72,7 @@ def test_create_list(client: TestClient, book: Book, reading_list_two: ReadingLi
     books = data["books"][0]
     assert books["title"] == book.title
     assert books["publisher"] == book.publisher
-    assert books["published_year"] == book.published_year
+    assert books["published_date"] == book.published_date
     assert books["description"] == book.description
     assert books["page_count"] == book.page_count
     assert books["average_rating"] == book.average_rating

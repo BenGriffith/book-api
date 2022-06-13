@@ -50,7 +50,7 @@ def pwd():
 
 
 @pytest.fixture(name="current_user")
-def test_current_user(client: TestClient, session: Session):
+def current_user(client: TestClient, session: Session):
 
     user = schemas.UserCreate(
         username="testuser",

@@ -4,8 +4,8 @@ from sqlalchemy import func
 from fastapi import HTTPException
 from passlib.context import CryptContext
 
-from app.models import User, Author, Book, ReadingList
-from app.schemas import UserCreate, UserUpdate, AuthorCreate, AuthorUpdate, BookCreate, BookUpdate, ReadingListCreate
+from app.models import User, Book, ReadingList
+from app.schemas import UserCreate, UserUpdate, BookCreate, BookUpdate, ReadingListCreate
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -16,14 +16,14 @@ def write_user(db: Session, user: UserCreate):
     ).first()
 
     if username:
-        raise HTTPException(status_code=400, detail="Please use different username")
+        raise HTTPException(status_code=400, detail="Username already exists. Please use different username")
 
     email = db.query(User).filter(
         func.lower(User.email) == func.lower(user.email)
         ).first()
 
     if email:
-        raise HTTPException(status_code=400, detail="Please use different email address")
+        raise HTTPException(status_code=400, detail="Email address already exists. Please use different email address")
 
     user = User(
         username=user.username,
@@ -45,6 +45,7 @@ def read_user(db: Session, user_id: int):
 
 
 def get_user(db: Session, username: str):
+
 
     try:
         user = db.query(User).filter(
@@ -77,84 +78,30 @@ def delete_user(db: Session, user: User):
     return {"message": f"{user.first_name} {user.last_name} was deleted"}
 
 
-def write_author(db: Session, author: AuthorCreate):
+def get_google_book(db: Session, book_id: str):
 
-    author_exists = db.query(Author).filter(
-        func.lower(Author.first_name) == func.lower(author.first_name),
-        func.lower(Author.last_name) == func.lower(author.last_name)
+    db_book = db.query(Book).filter(
+        Book.google_books_id == book_id
     ).first()
 
-    if author_exists:
-        raise HTTPException(status_code=400, detail=f"{author.first_name.capitalize()} {author.last_name.capitalize()} already exists")
+    return db_book
     
-    author = Author(first_name=author.first_name.capitalize(), last_name=author.last_name.capitalize())
-    db.add(author)
-    db.commit()
-    db.refresh(author)
-
-    return author
-
-
-def read_author(db: Session, author_id: int):
-    author = db.get(Author, author_id)
-    return author
-
-
-def read_authors(db: Session, skip: int, limit: int):
-    return db.query(Author).offset(skip).limit(limit).all()
-
-
-def update_author(db: Session, author: Author, updates: AuthorUpdate):
-    update_data = updates.dict(exclude_unset=True)
-
-    author.first_name = update_data["first_name"].capitalize()
-    author.last_name = update_data["last_name"].capitalize()
-
-    db.commit()
-    db.refresh(author)
-
-    return author
-
-
-def delete_author(db: Session, author: Author):
-    db.delete(author)
-    db.commit()
-    return {"message": f"{author.first_name} {author.last_name} was deleted"}
-
 
 def write_book(db: Session, book: BookCreate, user_id: User):
 
-    authors = []
-    for author in book.authors:
-
-        first_name = author.first_name
-        last_name = author.last_name
-
-        try:
-            db_author = db.query(Author).filter(
-                func.lower(Author.first_name) == func.lower(first_name), 
-                func.lower(Author.last_name) == func.lower(last_name)
-                ).one()
-        except NoResultFound:
-            db_author = None
-
-        if db_author is None:
-            raise HTTPException(status_code=404, detail=f"Author not found. Please create an Author entry for {first_name} {last_name}")
-
-        authors.append(db_author)
-
     db_book = Book( 
         title=book.title.title(),
-        authors=authors,
+        authors=book.authors,
         publisher=book.publisher.title(),
-        published_year=book.published_year,
+        published_date=book.published_date,
         description=book.description,
         page_count=book.page_count,
         average_rating=book.average_rating,
-        user_id = user_id
+        google_books_id=book.google_books_id,
+        user_id=user_id,
     )
 
-    db.add_all(authors + [db_book])
+    db.add(db_book)
     db.commit()
     db.refresh(db_book)
         
@@ -174,7 +121,7 @@ def update_book(db: Session, book: Book, updates: BookUpdate):
     update_data = updates.dict(exclude_unset=True)
 
     book.publisher = update_data["publisher"].title()
-    book.published_year = update_data["published_year"]
+    book.published_date = update_data["published_date"]
     book.description = update_data["description"]
     book.average_rating = update_data["average_rating"]
 

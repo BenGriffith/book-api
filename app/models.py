@@ -4,13 +4,6 @@ from sqlalchemy.orm import relationship
 from app.db import Base
 
 
-BookAuthor = Table(
-    "book_author",
-    Base.metadata,
-    Column("book_id", Integer, ForeignKey("books.id")),
-    Column("author_id", Integer, ForeignKey("authors.id"))
-)
-
 BookList = Table(
     "book_reading_list",
     Base.metadata,
@@ -25,27 +18,17 @@ class Book(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     title = Column(String)
+    authors = Column(String)
     publisher = Column(String)
-    published_year = Column(Integer)
+    published_date = Column(String)
     description = Column(String)
     page_count = Column(Integer)
     average_rating = Column(Float)
+    google_books_id = Column(String)
     user_id = Column(Integer, ForeignKey("users.id"))
 
     user = relationship("User")
-    authors = relationship("Author", secondary="book_author", back_populates="books")
     reading_lists = relationship("ReadingList", secondary="book_reading_list", back_populates="books")
-
-
-class Author(Base):
-
-    __tablename__ = "authors"
-
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    first_name = Column(String)
-    last_name = Column(String)
-
-    books = relationship("Book", secondary="book_author", back_populates="authors")
 
 
 class User(Base):
