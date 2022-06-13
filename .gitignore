@@ -1,6 +1,10 @@
 .env
 venv
 setup.py
+pyvenv.cfg
+bin/
+include/
+lib/
 app.egg-info
 
 app/.env
