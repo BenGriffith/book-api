@@ -190,3 +190,24 @@ def test_delete_book_locked(session: Session, client: TestClient, book: Book):
     response = client.delete(f"/books/{db_book.id}")
     assert response.status_code == 401
     assert response.json() == {"detail": "Not authenticated"}
+
+
+def test_create_book_exists(session: Session, client: TestClient, book: Book, current_user: User):
+
+    response = client.get("/users/me", headers=current_user)
+
+    book_two = BookCreate(
+        title="Awesome Book",
+        authors="'Tony Parker, Stephen King'",
+        publisher="Self",
+        published_date="2021-10-01",
+        description="must read book",
+        page_count=100,
+        average_rating=4.6,
+        google_books_id=None,
+        user_id=response.json().get("id")
+    ).dict()
+
+    response = client.post("/books/", json=book_two, headers=current_user)
+    assert response.status_code == 400
+    assert response.json() == {"detail": "Book already exists"}

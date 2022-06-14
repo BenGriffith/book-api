@@ -170,16 +170,6 @@ def get_book(book_id: int, db: Session = Depends(get_db), current_user: schemas.
     return book
 
 
-@app.get("/books/google/{book_id}", status_code=200)
-def get_google_book(book_id: str, db: Session = Depends(get_db), current_user: schemas.User = Depends(get_current_user)):
-    book = crud.get_google_book(db=db, book_id=book_id)
-
-    if book is not None:
-        raise HTTPException(status_code=400, detail="Book already exists")
-
-    return book
-
-
 @app.patch("/books/{book_id}")
 def update_book(book_id: int, book: schemas.BookUpdate, db: Session = Depends(get_db), current_user: schemas.User = Depends(get_current_user)):
     existing_book = crud.read_book(db=db, book_id=book_id)
