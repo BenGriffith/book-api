@@ -76,18 +76,22 @@ def delete_user(db: Session, user: User):
     db.delete(user)
     db.commit()
     return {"message": f"{user.first_name} {user.last_name} was deleted"}
-
-
-def get_google_book(db: Session, book_id: str):
-
-    db_book = db.query(Book).filter(
-        Book.google_books_id == book_id
-    ).first()
-
-    return db_book
     
 
 def write_book(db: Session, book: BookCreate, user_id: User):
+
+    if book.google_books_id:
+        db_book = db.query(Book).filter(
+            Book.google_books_id == book.google_books_id
+        ).first()
+    else:
+        db_book = db.query(Book).filter(
+            Book.title == book.title,
+            Book.authors == book.authors
+        ).first()
+
+    if db_book is not None:
+        raise HTTPException(status_code=400, detail="Book already exists")
 
     db_book = Book( 
         title=book.title.title(),
