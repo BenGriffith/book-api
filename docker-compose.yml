@@ -3,12 +3,17 @@ version: '3.8'
 services:
   db:
     image: postgres:13
-    volumes:
-      - postgres_data:/var/lib/postgresql/data/
     env_file:
       - app/.env
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    environment:
+      - POSTGRES_USER=DATABASE_USER
+      - POSTGRES_PASSWORD=DATABASE_PASSWORD
+      - POSTGRES_DB=DATABASE
     ports:
       - 5432:5432
+    container_name: book_api_db
   app:
     build: .
     env_file:
@@ -20,6 +25,7 @@ services:
       - 8000:80
     depends_on:
       - db
+    container_name: book_api_app
 
 volumes:
   postgres_data:
