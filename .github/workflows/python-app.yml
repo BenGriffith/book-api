@@ -37,3 +37,9 @@ jobs:
     - name: Test with pytest
       run: |
         pytest
+      env:
+        SECRET_KEY: abc123
+        DEBUG: True
+        DATABASE_URL: sqlite:///test.db
+        ALGORITHM: HS256
+        ACCESS_TOKEN_EXPIRE_MINUTES: 2

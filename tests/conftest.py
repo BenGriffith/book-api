@@ -63,7 +63,7 @@ def current_user(client: TestClient, session: Session):
     user_create_response = client.post("/users/", json=user)
 
     token_response = client.post(
-            "/token", 
+            "/token",
             data={"username": "testuser", "password": "quarantine"},
             headers={"content-type": "application/x-www-form-urlencoded"})
 
