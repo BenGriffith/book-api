@@ -11,7 +11,7 @@ ACCESS_TOKEN_EXPIRE_MINUTES = config("ACCESS_TOKEN_EXPIRE_MINUTES", cast=int)
 CHECK_SAME_THREAD = config("CHECK_SAME_THREAD", default=False, cast=bool)
 
 if CHECK_SAME_THREAD:
-    kwargs = {"check_same_thread": False}
+    kwargs = {"connect_args": {"check_same_thread": False}}
 else:
     kwargs = {}
 engine = create_engine(DATABASE_URL, echo=DEBUG, **kwargs)
