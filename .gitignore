@@ -1,14 +1,7 @@
 .env
 venv
-setup.py
-pyvenv.cfg
-bin/
-include/
-lib/
-app.egg-info
 
 app/.env
-app/erd
 app/__pycache__
 tests/__pycache__
 *.db
