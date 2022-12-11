@@ -1,6 +1,7 @@
 version: '3.8'
 
 services:
+
   db:
     image: postgres:13
     container_name: book_api_db
@@ -15,11 +16,14 @@ services:
   app:
     build: .
     container_name: book_api_app
+    image: benpgriffith/app:latest
     environment:
       - DATABASE_URL=$DATABASE_URL
+      - DEBUG=$DEBUG
+      - SECRET_KEY=$SECRET_KEY
+      - ALGORITHM=$ALGORITHM
+      - ACCESS_TOKEN_EXPIRE_MINUTES=$ACCESS_TOKEN_EXPIRE_MINUTES
     command: uvicorn app.main:app --host 0.0.0.0 --port 80
-    volumes:
-      - .:/app
     ports:
       - 8000:80
     depends_on:
