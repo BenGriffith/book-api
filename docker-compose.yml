@@ -25,7 +25,6 @@ services:
     build: 
       context: .
       dockerfile: Dockerfile
-    image: benpgriffith/yourbooks:latest
     environment:
       - DATABASE_URL=postgresql://$POSTGRES_USER:$POSTGRES_PASSWORD@yourbooks_db/$POSTGRES_DB
       - DEBUG=$DEBUG
