@@ -8,12 +8,16 @@ Swagger / OpenAPI
 
 ## Setup
 To run this project, setup your virtual environment and then follow the steps below:
-`$ git clone https://github.com/BenGriffith/book-api.git`
-`$ pip install -r requirements.txt`
-`$ cd app/`
-`$ cp .env-template .env`
+```
+$ git clone https://github.com/BenGriffith/book-api.git
+$ pip install -r requirements.txt
+$ cd app/
+$ cp .env-template .env
+```
 
 Open .env, populate the environment variables and then continue with the following command:
-`$ docker-compose --env-file app/.env up -d`
+```
+$ docker-compose --env-file app/.env up -d
+```
 
 Navigate to your browser and type in `http://localhost:8000/docs`. You should see content similar to the Swagger / OpenAPI image above. Alternatively, you could run `$ curl http://localhost:8000/docs` from the command line and verify the HTML output.
