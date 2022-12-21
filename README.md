@@ -1,6 +1,8 @@
 ## General Info
 
-FastAPI application allowing individuals to manage their reading lists from an ever-growing books database. The API includes endpoints for managing users, books and lists using POST, GET, PATCH, DELETE and PUT with additional endpoints for user password encryption and OAuth. Lastly, it interfaces with a terminal application built using Typer. Please feel free to check it out here: https://github.com/BenGriffith/book-api-cli.
+FastAPI application allowing individuals to manage their reading lists from an ever-growing books database. It includes endpoints for managing users, books and lists using POST, GET, PATCH, DELETE and PUT with additional endpoints for user password encryption and OAuth.
+
+This API also interfaces with a terminal application built using Typer. Please feel free to check it out here: https://github.com/BenGriffith/book-api-cli.
 
 Swagger / OpenAPI
 
