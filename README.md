@@ -16,9 +16,21 @@ $ cd app/
 $ cp .env-template .env
 ```
 
-Open .env, populate the environment variables and continue with the following command:
+Open .env and populate the environment variables:
+```
+POSTGRES_USER= ## Your database user such as postgres
+POSTGRES_PASSWORD= ## Your database password
+POSTGRES_DB= ## Your database name
+
+DEBUG= ## True or False
+SECRET_KEY= ## Generate a string using 'openssl rand -hex 32' or similar method
+ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES= ## 30, 60, 90, 120, 240, etc.
+```
+
+Finally, make certain you are in the project root directory and then execute the following command:
 ```
 $ docker-compose --env-file app/.env up -d
 ```
 
-Navigate to your browser and type in `http://localhost:8000/docs`. You should see content similar to the Swagger / OpenAPI image above. Alternatively, you could run `$ curl http://localhost:8000/docs` from the command line and verify the HTML output.
+To validate setup, navigate to your browser and type in `http://localhost:8000/docs`. You should see content similar to the Swagger / OpenAPI referenced above. Alternatively, you could run `$ curl http://localhost:8000/docs` from the command line and verify the HTML output.
