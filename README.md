@@ -12,7 +12,11 @@ Swagger / OpenAPI
 To run this project, follow the steps below:
 ```
 $ git clone https://github.com/BenGriffith/book-api.git
-$ cd app/
+$ cd book-api
+$ python3 -m virtualenv venv
+$ source venv/bin/activate
+$ pip install -r requirements.txt
+$ cd ../app/
 $ cp .env-template .env
 ```
 
