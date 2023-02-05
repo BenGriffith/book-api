@@ -12,13 +12,45 @@ Create User
 
 ![User](images/create_user.png "Create User")
 
+Get User
+
+![User](images/get_user.png "Get User")
+
+Update User
+
+![User](images/update_user.png "Update User")
+
+Delete User
+
+![User](images/delete_user.png "Delete User")
+
 Create Book
 
 ![Book](images/create_book.png "Create Book")
 
+Get Book
+
+![Book](images/get_book.png "Get Book")
+
+Update Book
+
+![Book](images/update_book.png "Update Book")
+
+Delete Book
+
+![Book](images/delete_book.png "Delete Book")
+
 Create Reading List
 
 ![List](images/create_list.png "Create List")
+
+Get Reading List
+
+![List](images/get_list.png "Get List")
+
+Delete Reading List
+
+![List](images/delete_list.png "Delete List")
 
 ## Setup
 To run this project, follow the steps below:
