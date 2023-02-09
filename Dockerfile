@@ -1,4 +1,4 @@
-FROM --platform=linux/amd64 python:3.10.4
+FROM python:3.10.4
 WORKDIR /app
 COPY ./app ./app
 ENV PYTHONDONTWRITEBYTECODE 1
